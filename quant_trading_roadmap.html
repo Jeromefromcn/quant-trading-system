@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>量化交易系統行動路線圖</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #f4f6fa;
+      --bg-card:     #ffffff;
+      --bg-card-2:   #edf1f7;
+      --border:      rgba(0,0,0,0.08);
+      --border-b:    rgba(0,0,0,0.13);
+      --text:        #374151;
+      --text-bright: #111827;
+      --text-muted:  #6b7280;
+      --text-dim:    #9ca3af;
+      --gold:        #b45309;
+      --gold-bg:     rgba(180,83,9,0.08);
+      --blue:        #2563eb;
+      --green:       #059669;
+      --red:         #dc2626;
+      --purple:      #7c3aed;
+      --amber:       #d97706;
+      --p0: #4f46e5; --p0-bg: rgba(79,70,229,0.1);
+      --p1: #16a34a; --p1-bg: rgba(22,163,74,0.1);
+      --p2: #2563eb; --p2-bg: rgba(37,99,235,0.1);
+      --p3: #d97706; --p3-bg: rgba(217,119,6,0.1);
+      --p4: #dc2626; --p4-bg: rgba(220,38,38,0.1);
+      --code-bg:     #e8edf5;
+      --sw:          230px;
+      --font-d: 'Syne', sans-serif;
+      --font-b: 'Plus Jakarta Sans', sans-serif;
+      --font-m: 'JetBrains Mono', monospace;
+    }
+
+    html { scroll-behavior: smooth; }
+    body { background: var(--bg); color: var(--text); font-family: var(--font-b); font-size: 20px; line-height: 1.72; min-height: 100vh; }
+
+    /* ── Sidebar ─────────────────────────────── */
+    .sidebar {
+      position: fixed; top: 0; left: 0;
+      width: var(--sw); height: 100vh;
+      background: var(--bg-card); border-right: 1px solid var(--border);
+      overflow-y: auto; z-index: 100;
+      display: flex; flex-direction: column;
+    }
+    .sb-brand { padding: 22px 20px 18px; border-bottom: 1px solid var(--border); }
+    .sb-brand .logo { font-family: var(--font-d); font-size: 14px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--gold); }
+    .sb-brand .sub  { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+    .sb-nav  { padding: 14px 0; flex: 1; }
+    .nav-lbl { font-size: 12px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--text-dim); padding: 12px 20px 4px; }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 20px; cursor: pointer; transition: all .15s;
+      text-decoration: none; color: var(--text-muted); font-size: 15px;
+    }
+    .nav-item:hover { color: var(--text); background: rgba(0,0,0,0.04); }
+    .nav-item.active { color: var(--text-bright); background: rgba(0,0,0,0.07); }
+    .nav-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: var(--text-dim); transition: background .15s; }
+    .nav-item:hover .nav-dot, .nav-item.active .nav-dot { background: var(--gold); }
+    .nav-item[data-p="0"] .nav-dot { background: var(--p0); }
+    .nav-item[data-p="1"] .nav-dot { background: var(--p1); }
+    .nav-item[data-p="2"] .nav-dot { background: var(--p2); }
+    .nav-item[data-p="3"] .nav-dot { background: var(--p3); }
+    .nav-item[data-p="4"] .nav-dot { background: var(--p4); }
+    .sb-footer {
+      padding: 14px 20px; border-top: 1px solid var(--border);
+      font-size: 13px; color: var(--text-muted); line-height: 1.8;
+    }
+    .sb-footer span { display: block; }
+    .sb-footer span::before { content: '→ '; color: var(--gold); }
+
+    /* ── Main ────────────────────────────────── */
+    .main { margin-left: var(--sw); max-width: 900px; padding: 48px 56px 96px; }
+
+    /* ── Page header ─────────────────────────── */
+    .pg-header { margin-bottom: 52px; padding-bottom: 36px; border-bottom: 1px solid var(--border); }
+    .pg-header h1 { font-family: var(--font-d); font-size: 40px; font-weight: 800; color: var(--text-bright); letter-spacing: -.02em; line-height: 1.2; }
+    .pg-header .tagline { margin-top: 8px; font-size: 19px; color: var(--text-muted); }
+    .pg-header .meta { margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .badge { font-family: var(--font-m); font-size: 13px; padding: 3px 9px; border-radius: 4px; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-muted); }
+
+    /* ── Timeline ────────────────────────────── */
+    .tl-wrap { margin-top: 24px; }
+    .tl-bar { display: flex; height: 5px; border-radius: 6px; overflow: hidden; }
+    .tl-bar div { transition: opacity .3s; }
+    .tl-0 { background: var(--p0); flex: 1; }
+    .tl-1 { background: var(--p1); flex: 3; }
+    .tl-2 { background: var(--p2); flex: 6; }
+    .tl-3 { background: var(--p3); flex: 6; }
+    .tl-4 { background: var(--p4); flex: 2; }
+    .tl-labels { display: flex; margin-top: 6px; font-size: 13px; font-family: var(--font-m); }
+    .tl-labels span { white-space: nowrap; }
+
+    /* ── Section ─────────────────────────────── */
+    section { margin-bottom: 60px; }
+    .sec-head { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 22px; }
+    .ph-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 40px; height: 40px; border-radius: 10px;
+      font-family: var(--font-d); font-size: 16px; font-weight: 800;
+      flex-shrink: 0; margin-top: 2px;
+    }
+    .ph-badge.g   { background: var(--gold-bg);  color: var(--gold);   }
+    .ph-badge.p0  { background: var(--p0-bg);    color: var(--p0);     }
+    .ph-badge.p1  { background: var(--p1-bg);    color: var(--p1);     }
+    .ph-badge.p2  { background: var(--p2-bg);    color: var(--p2);     }
+    .ph-badge.p3  { background: var(--p3-bg);    color: var(--p3);     }
+    .ph-badge.p4  { background: var(--p4-bg);    color: var(--p4);     }
+    .ph-badge.pu  { background: rgba(167,139,250,.1); color: var(--purple); }
+    .ph-badge.gr  { background: rgba(45,206,137,.1);  color: var(--green);  }
+    .sec-title-blk h2 { font-family: var(--font-d); font-size: 28px; font-weight: 700; color: var(--text-bright); letter-spacing: -.01em; }
+    .dur { font-size: 16px; color: var(--text-muted); margin-top: 3px; font-family: var(--font-m); }
+    h3 { font-family: var(--font-d); font-size: 19px; font-weight: 700; color: var(--text-bright); margin: 28px 0 11px; letter-spacing: .01em; text-transform: uppercase; }
+    p  { margin-bottom: 11px; }
+
+    /* ── Cards ───────────────────────────────── */
+    .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; margin-bottom: 14px; }
+    .card.b-gold { border-left: 3px solid var(--gold); }
+    .card.b-p0   { border-left: 3px solid var(--p0);   }
+    .card.b-p1   { border-left: 3px solid var(--p1);   }
+    .card.b-p2   { border-left: 3px solid var(--p2);   }
+    .card.b-p3   { border-left: 3px solid var(--p3);   }
+    .card.b-p4   { border-left: 3px solid var(--p4);   }
+
+    /* ── Confirm banner ──────────────────────── */
+    .confirm-box { background: rgba(240,160,32,.06); border: 1px solid rgba(240,160,32,.22); border-radius: 12px; padding: 20px 24px; margin-bottom: 14px; }
+    .confirm-box .ct { font-family: var(--font-d); font-size: 14px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--gold); margin-bottom: 14px; }
+    .ci { display: flex; gap: 12px; margin-bottom: 12px; font-size: 19px; }
+    .ci-num { font-family: var(--font-m); font-size: 13px; color: var(--gold); background: rgba(240,160,32,.1); padding: 2px 8px; border-radius: 4px; flex-shrink: 0; height: fit-content; margin-top: 3px; }
+    .ci strong { color: var(--text-bright); }
+
+    /* ── Criteria box ────────────────────────── */
+    .crit { background: rgba(34,197,94,.05); border: 1px solid rgba(34,197,94,.2); border-radius: 10px; padding: 16px 20px; margin-top: 20px; }
+    .crit.amber { background: rgba(245,158,11,.05); border-color: rgba(245,158,11,.2); }
+    .crit.red   { background: rgba(239,68,68,.05);  border-color: rgba(239,68,68,.2);  }
+    .crit-t { font-family: var(--font-m); font-size: 13px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--green); margin-bottom: 10px; }
+    .crit.amber .crit-t { color: var(--p3); }
+    .crit.red   .crit-t { color: var(--red); }
+
+    /* ── Callouts ────────────────────────────── */
+    .co { border-radius: 8px; padding: 13px 16px; margin: 11px 0; font-size: 18px; display: flex; gap: 10px; align-items: flex-start; }
+    .co.warn { background: rgba(220,38,38,.06);    border: 1px solid rgba(220,38,38,.25);   color: #991b1b; }
+    .co.info { background: rgba(37,99,235,.06);   border: 1px solid rgba(37,99,235,.25);   color: #1e40af; }
+    .co.tip  { background: rgba(5,150,105,.06);   border: 1px solid rgba(5,150,105,.25);   color: #065f46; }
+    .co-ic { flex-shrink: 0; }
+
+    /* ── Workflow steps ──────────────────────── */
+    .wf { }
+    .wf-step { display: flex; gap: 14px; margin-bottom: 16px; }
+    .wf-n { width: 26px; height: 26px; border-radius: 50%; background: var(--bg-card-2); border: 1px solid var(--border-b); display: flex; align-items: center; justify-content: center; font-family: var(--font-m); font-size: 14px; color: var(--gold); flex-shrink: 0; margin-top: 2px; }
+    .wf-c strong { color: var(--text-bright); display: block; margin-bottom: 3px; font-size: 19px; }
+    .wf-c p { margin: 0; font-size: 18px; color: var(--text-muted); }
+
+    /* ── Tables ──────────────────────────────── */
+    table { width: 100%; border-collapse: collapse; margin: 11px 0; font-size: 18px; }
+    th { background: var(--bg-card-2); color: var(--text-bright); font-family: var(--font-d); font-size: 15px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border-b); }
+    td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; line-height: 1.55; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(0,0,0,0.025); }
+
+    /* ── Code ────────────────────────────────── */
+    pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 11px 0; font-family: var(--font-m); font-size: 16px; line-height: 1.65; color: #374151; }
+    code { font-family: var(--font-m); font-size: 16px; background: var(--code-bg); border: 1px solid var(--border); padding: 1px 6px; border-radius: 4px; color: #374151; }
+    pre code { background: none; border: none; padding: 0; }
+    .t-dir  { color: #1d4ed8; }
+    .t-gold { color: var(--gold); }
+    .t-red  { color: #b91c1c; }
+    .t-dim  { color: #9ca3af; }
+    .t-p0   { color: var(--p0); }
+    .t-p1   { color: var(--p1); }
+    .t-p2   { color: var(--p2); }
+    .t-p3   { color: var(--p3); }
+    .t-p4   { color: var(--p4); }
+
+    /* ── Lists ───────────────────────────────── */
+    ul, ol { padding-left: 20px; margin-bottom: 11px; }
+    li { margin-bottom: 6px; color: var(--text); line-height: 1.65; }
+    li strong { color: var(--text-bright); }
+
+    /* ── Helpers ─────────────────────────────── */
+    hr { border: none; border-top: 1px solid var(--border); margin: 44px 0; }
+    .hl     { color: var(--gold);  font-weight: 600; }
+    .hl-g   { color: var(--green); font-weight: 600; }
+    .hl-r   { color: var(--red);   font-weight: 600; }
+    .mono   { font-family: var(--font-m); font-size: 12.5px; }
+
+    /* ── Scrollbar ───────────────────────────── */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: #1e3050; border-radius: 3px; }
+
+    /* ── Print / Responsive ──────────────────── */
+    @media print { .sidebar { display: none; } .main { margin-left: 0; padding: 20px; max-width: 100%; } }
+    @media (max-width: 800px) { .sidebar { display: none; } .main { margin-left: 0; padding: 24px 20px; } }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════ SIDEBAR ═══════════════ -->
+<aside class="sidebar">
+  <div class="sb-brand">
+    <div class="logo">量化交易</div>
+    <div class="sub">行動路線圖 · Claude Code 版</div>
+  </div>
+  <nav class="sb-nav">
+    <div class="nav-lbl">準備</div>
+    <a href="#confirm"   class="nav-item" data-s="confirm">  <span class="nav-dot"></span> 待確認事項</a>
+    <a href="#overview"  class="nav-item" data-s="overview"> <span class="nav-dot"></span> 整體邏輯</a>
+    <a href="#monorepo"  class="nav-item" data-s="monorepo"> <span class="nav-dot"></span> Monorepo 決策</a>
+    <a href="#structure" class="nav-item" data-s="structure"><span class="nav-dot"></span> 倉庫結構</a>
+    <div class="nav-lbl">執行階段</div>
+    <a href="#phase0" class="nav-item" data-p="0" data-s="phase0"><span class="nav-dot"></span> Phase 0 · 環境建設</a>
+    <a href="#phase1" class="nav-item" data-p="1" data-s="phase1"><span class="nav-dot"></span> Phase 1 · 學習</a>
+    <a href="#phase2" class="nav-item" data-p="2" data-s="phase2"><span class="nav-dot"></span> Phase 2 · 策略研究</a>
+    <a href="#phase3" class="nav-item" data-p="3" data-s="phase3"><span class="nav-dot"></span> Phase 3 · Paper Trading</a>
+    <a href="#phase4" class="nav-item" data-p="4" data-s="phase4"><span class="nav-dot"></span> Phase 4 · 實盤</a>
+    <div class="nav-lbl">參考</div>
+    <a href="#guardrails" class="nav-item" data-s="guardrails"><span class="nav-dot"></span> 核心守則</a>
+    <a href="#quickref"   class="nav-item" data-s="quickref">  <span class="nav-dot"></span> 快速參考</a>
+  </nav>
+  <div class="sb-footer">
+    <span>每個決策必須可記錄</span>
+    <span>理解優先於能跑起來</span>
+    <span>API 金鑰永不入 Git</span>
+    <span>沒達到完成標準不進下一步</span>
+  </div>
+</aside>
+
+<!-- ═══════════════ MAIN ═══════════════════ -->
+<main class="main">
+
+  <!-- PAGE HEADER -->
+  <div class="pg-header">
+    <h1>量化交易系統行動路線圖</h1>
+    <p class="tagline">從業務學習到 Paper Trading，再到實盤的完整工程指南</p>
+    <div class="meta">
+      <span class="badge">Claude Code 協作版</span>
+      <span class="badge">加密貨幣 + 美股</span>
+      <span class="badge">趨勢跟蹤策略</span>
+      <span class="badge">Monorepo · Git First</span>
+      <span class="badge">2026</span>
+    </div>
+    <div class="tl-wrap">
+      <div class="tl-bar">
+        <div class="tl-0"></div><div class="tl-1"></div>
+        <div class="tl-2"></div><div class="tl-3"></div><div class="tl-4"></div>
+      </div>
+      <div class="tl-labels">
+        <span style="flex:1;  color:var(--p0)">Setup</span>
+        <span style="flex:3;  color:var(--p1)">學習 3-4w&nbsp;&nbsp;</span>
+        <span style="flex:6;  color:var(--p2)">策略研究 4-8w&nbsp;&nbsp;</span>
+        <span style="flex:6;  color:var(--p3)">Paper 6-8w&nbsp;&nbsp;</span>
+        <span style="flex:2;  color:var(--p4)">Live</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ CONFIRM ════ -->
+  <section id="confirm">
+    <div class="sec-head">
+      <div class="ph-badge g">!</div>
+      <div class="sec-title-blk">
+        <h2>開始之前：待確認事項</h2>
+        <div class="dur">這 4 點影響後續所有時間估算和工具選型，先對自己確認清楚</div>
+      </div>
+    </div>
+
+    <div class="confirm-box">
+      <div class="ct">⚠ 請在啟動前確認以下 4 項</div>
+
+      <div class="ci">
+        <span class="ci-num">01</span>
+        <div>
+          <strong>Python 熟練程度</strong><br>
+          量化工作幾乎全用 Python（pandas、numpy、matplotlib）。如果你主要背景是 Java 或 Go，需要額外花 1-2 週熟悉 pandas 的向量化數據操作——這不是語法問題，是思維方式的切換。如果已經熟練，這一條跳過。
+        </div>
+      </div>
+
+      <div class="ci">
+        <span class="ci-num">02</span>
+        <div>
+          <strong>每週可投入時間</strong><br>
+          本路線圖所有時間估算基於 <span class="hl">5-10 小時 / 週</span>。你目前在讀碩士 + 接 Upwork + 家庭，如果每週只有 3-4 小時，所有時間線乘以 1.5 倍，不要逼自己。
+        </div>
+      </div>
+
+      <div class="ci">
+        <span class="ci-num">03</span>
+        <div>
+          <strong>Binance / Alpaca 帳戶狀態</strong><br>
+          Phase 0 需要建立 Binance Testnet 和 Alpaca Paper Trading 帳戶並拿到 API Key。Binance Testnet 不需要 KYC，5 分鐘搞定。Alpaca Paper 免費帳戶同樣簡單。如果已有正式帳戶，Testnet Key 單獨申請即可。
+        </div>
+      </div>
+
+      <div class="ci">
+        <span class="ci-num">04</span>
+        <div>
+          <strong>Paper Trading 模擬資金規模</strong><br>
+          建議設定為你計劃實際投入的金額（例如 $10,000 USD）。理由不是準確性，而是讓你從一開始就用真實規模計算倉位，養成習慣。
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ════ OVERVIEW ════ -->
+  <section id="overview">
+    <div class="sec-head">
+      <div class="ph-badge g">≡</div>
+      <div class="sec-title-blk"><h2>整體邏輯與核心原則</h2></div>
+    </div>
+
+    <p>你在 Paperclip 遇到的管理混亂，根本原因是<span class="hl">沒有外部記憶</span>：不知道每個 agent 在幹什麼，不知道自己試過什麼，不知道為什麼做了這個決定。</p>
+
+    <p>解決方案不是換一個更好的框架，而是建立一套<strong style="color:var(--text-bright)">讓所有決策可見、可回溯、可測量</strong>的工作方式。Git + 代碼 + 研究日誌，就是這套方式。</p>
+
+    <div class="card b-gold">
+      <table style="margin:0">
+        <tr>
+          <th>什麼由確定性代碼決定</th>
+          <th>什麼由 Claude Code 輔助</th>
+          <th>什麼由你決定</th>
+        </tr>
+        <tr>
+          <td>信號計算<br>風控規則<br>訂單執行</td>
+          <td>生成學習腳本<br>實現技術指標<br>重構代碼結構</td>
+          <td>策略假設<br>參數選擇<br>是否進入下一階段</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="co warn">
+      <span class="co-ic">⚠</span>
+      <span><strong>LLM 不能做核心交易決策。</strong>它的輸出是概率性的，交易系統需要確定性。Claude Code 是你的編碼加速器，不是策略師。信號由確定性邏輯生成，Claude Code 只幫你把邏輯寫成代碼。</span>
+    </div>
+  </section>
+
+  <!-- ════ MONOREPO ════ -->
+  <section id="monorepo">
+    <div class="sec-head">
+      <div class="ph-badge g">Git</div>
+      <div class="sec-title-blk"><h2>Monorepo 決策</h2></div>
+    </div>
+
+    <div class="co tip">
+      <span class="co-ic">✓</span>
+      <span><strong>結論：合理，從學習到實盤全用一個倉庫。</strong>有明確的充分理由再拆，不要提前拆。</span>
+    </div>
+
+    <h3>為什麼合理</h3>
+    <ul>
+      <li>學習代碼 → 研究代碼 → 實盤代碼是<strong>自然演進</strong>的關係，分拆只會製造同步問題</li>
+      <li>Git history 就是你的完整研究記錄，拆庫會斷掉這個連續性</li>
+      <li>策略指標代碼在學習階段寫好，後續直接 import，不需要跨庫引用</li>
+      <li>你是獨立開發者，monorepo 的協作管理成本接近零</li>
+    </ul>
+
+    <h3>什麼時候才需要拆</h3>
+    <ul>
+      <li>進入實盤後需要在 VPS 部署，只部署 <code>05_live/</code> 目錄即可，不需要拆庫</li>
+      <li>真正需要拆的情況：引入協作者，或有 CI/CD 安全合規要求</li>
+      <li>保守估計：至少一年後才可能需要</li>
+    </ul>
+
+    <h3>唯一的安全注意事項</h3>
+    <div class="co warn">
+      <span class="co-ic">🔒</span>
+      <div>
+        <strong>API 金鑰絕對不能進 Git。</strong><br>
+        所有秘鑰放 <code>.env</code>，<code>.gitignore</code> 的第一行就是 <code>.env</code>。<code>.env.example</code> 只放佔位符，可以 commit，用於提醒你需要哪些變量。這條規則<strong>從 Phase 0 第一天</strong>開始執行，沒有例外。
+      </div>
+    </div>
+  </section>
+
+  <!-- ════ STRUCTURE ════ -->
+  <section id="structure">
+    <div class="sec-head">
+      <div class="ph-badge g">{ }</div>
+      <div class="sec-title-blk">
+        <h2>倉庫結構設計</h2>
+        <div class="dur">目錄按執行階段編號，文件夾名就是你當前在哪個時期的地圖</div>
+      </div>
+    </div>
+
+<pre><code><span class="t-dir">quant-trading/</span>
+│
+├── <span class="t-gold">.env.example</span>            <span class="t-dim"># 佔位符，可 commit。真實 .env 永不入 Git</span>
+├── <span class="t-red">.gitignore</span>              <span class="t-dim"># 包含 .env, cache/, logs/, __pycache__/</span>
+├── <span class="t-gold">README.md</span>               <span class="t-dim"># 系統當前狀態的唯一事實來源（你現在在哪個 Phase？）</span>
+├── <span class="t-gold">STRATEGY_LOG.md</span>         <span class="t-dim"># 每次策略實驗的研究日誌（最重要的文件）</span>
+├── <span class="t-gold">DECISIONS.md</span>            <span class="t-dim"># 架構決策記錄：為什麼這樣設計，下次看到不懵</span>
+├── requirements.txt        <span class="t-dim"># pandas, numpy, matplotlib, ccxt, alpaca-trade-api...</span>
+│
+├── <span class="t-p1">01_learning/</span>            <span class="t-dim"># Phase 1：學習階段腳本（10 個概念）</span>
+│   ├── <span class="t-gold">README.md</span>           <span class="t-dim"># 學習進度：每個概念學完打勾</span>
+│   └── concepts/
+│       ├── 01_ohlcv_basics.py      <span class="t-dim"># K 線是什麼，拿到第一份真實數據</span>
+│       ├── 02_ema_sma.py           <span class="t-dim"># 均線計算、可視化、業務含義</span>
+│       ├── 03_atr.py               <span class="t-dim"># 波動率測量，止損的基礎</span>
+│       ├── 04_sharpe_drawdown.py   <span class="t-dim"># 策略評估的兩個核心指標</span>
+│       ├── 05_position_sizing.py   <span class="t-dim"># 固定風險倉位法：每筆虧多少</span>
+│       ├── 06_simple_backtest.py   <span class="t-dim"># 第一個完整回測，端到端跑通</span>
+│       ├── 07_backtest_metrics.py  <span class="t-dim"># 計算所有績效指標</span>
+│       ├── 08_overfitting.py       <span class="t-dim"># 過擬合是什麼，怎麼識別</span>
+│       ├── 09_lookahead_bias.py    <span class="t-dim"># 前視偏差演示與預防</span>
+│       └── 10_train_test_split.py  <span class="t-dim"># 樣本內外劃分：walk-forward 驗證</span>
+│
+├── <span class="t-p2">02_data/</span>                <span class="t-dim"># Phase 2+：數據管道（學習階段也會用到）</span>
+│   ├── fetchers/
+│   │   ├── binance_fetcher.py  <span class="t-dim"># 拉加密貨幣歷史 K 線，存本地</span>
+│   │   └── alpaca_fetcher.py   <span class="t-dim"># 拉美股歷史日線（調整後價格）</span>
+│   ├── <span class="t-red">cache/</span>              <span class="t-dim"># .gitignored。本地緩存，不重複拉數據</span>
+│   └── README.md               <span class="t-dim"># 數據字典：每個字段含義，數據覆蓋範圍</span>
+│
+├── <span class="t-p2">03_research/</span>            <span class="t-dim"># Phase 2：策略研究</span>
+│   ├── indicators/             <span class="t-dim"># 純函數，無副作用，100% 單元測試覆蓋</span>
+│   │   ├── trend.py            <span class="t-dim"># EMA, SMA, ADX, MACD</span>
+│   │   ├── volatility.py       <span class="t-dim"># ATR, Bollinger Bands</span>
+│   │   └── momentum.py         <span class="t-dim"># RSI, Stochastic</span>
+│   ├── strategies/
+│   │   ├── base.py             <span class="t-dim"># 策略基類：統一的輸入輸出接口</span>
+│   │   └── trend_following.py  <span class="t-dim"># 趨勢跟蹤策略實現</span>
+│   ├── backtest/
+│   │   ├── engine.py           <span class="t-dim"># 回測引擎（手續費＋滑點＋倉位管理）</span>
+│   │   ├── metrics.py          <span class="t-dim"># Sharpe, MaxDD, 勝率, 盈虧比計算</span>
+│   │   └── report.py           <span class="t-dim"># 生成標準化報告 JSON + 圖表</span>
+│   └── <span class="t-gold">experiments/</span>        <span class="t-dim"># 每次實驗一個文件夾，永遠保留</span>
+│       ├── exp_001_ema_baseline/
+│       │   ├── config.py       <span class="t-dim"># 參數配置</span>
+│       │   ├── results.json    <span class="t-dim"># 績效數字</span>
+│       │   └── notes.md        <span class="t-dim"># 結論和下一步假設</span>
+│       └── exp_002_ema_adx/    <span class="t-dim"># 同結構，持續累積</span>
+│
+├── <span class="t-p3">04_paper_trading/</span>       <span class="t-dim"># Phase 3：自動化 Paper Trading 系統</span>
+│   ├── agents/
+│   │   ├── data_agent.py       <span class="t-dim"># 實時數據拉取（WebSocket）</span>
+│   │   ├── signal_agent.py     <span class="t-dim"># 運行策略，生成交易信號</span>
+│   │   ├── risk_agent.py       <span class="t-dim"># 風控審核，硬性規則，不可繞過</span>
+│   │   └── execution_agent.py  <span class="t-dim"># 發送訂單至交易所 / 券商</span>
+│   ├── monitor.py              <span class="t-dim"># 每日報告生成 + Telegram 報警</span>
+│   ├── scheduler.py            <span class="t-dim"># 調度：加密 4h/次，美股收盤後</span>
+│   └── <span class="t-red">logs/</span>               <span class="t-dim"># .gitignored。所有運行日誌</span>
+│
+├── <span class="t-p4">05_live/</span>                <span class="t-dim"># Phase 4：實盤（現在只放 README，不動代碼）</span>
+│   └── README.md               <span class="t-dim"># 進入實盤的前置條件清單</span>
+│
+└── tests/                      <span class="t-dim"># 單元測試，與生產代碼同步</span>
+    ├── test_indicators.py      <span class="t-dim"># 每個指標函數的正確性驗證</span>
+    ├── test_backtest.py        <span class="t-dim"># 回測引擎（手動核對 10 筆交易）</span>
+    └── test_risk.py            <span class="t-dim"># 風控規則的邊界條件測試</span></code></pre>
+
+    <h3>.gitignore 核心內容</h3>
+<pre><code># ① 敏感文件（最重要，第一行）
+.env
+*.key
+*.pem
+
+# ② 數據緩存（文件太大，重新拉即可）
+02_data/cache/
+*.csv
+*.parquet
+*.h5
+
+# ③ 運行日誌
+04_paper_trading/logs/
+*.log
+
+# ④ Python 標準
+__pycache__/
+*.pyc
+.venv/
+.ipynb_checkpoints/
+
+# ⑤ 系統文件
+.DS_Store</code></pre>
+
+    <h3>.env.example 模板</h3>
+<pre><code># Binance Testnet（Phase 0-2 使用）
+BINANCE_TESTNET_API_KEY=your_key_here
+BINANCE_TESTNET_SECRET=your_secret_here
+
+# Alpaca Paper Trading（Phase 0-2 使用）
+ALPACA_PAPER_API_KEY=your_key_here
+ALPACA_PAPER_SECRET_KEY=your_secret_here
+ALPACA_PAPER_BASE_URL=https://paper-api.alpaca.markets
+
+# 通知（Phase 3 才需要）
+TELEGRAM_BOT_TOKEN=your_token_here
+TELEGRAM_CHAT_ID=your_chat_id_here</code></pre>
+  </section>
+
+  <hr>
+
+  <!-- ════ PHASE 0 ════ -->
+  <section id="phase0">
+    <div class="sec-head">
+      <div class="ph-badge p0">0</div>
+      <div class="sec-title-blk">
+        <h2>Phase 0：基礎設施建設</h2>
+        <div class="dur">⏱ 1-2 天 · 只做一次 · 之後每一天都在這個地基上工作</div>
+      </div>
+    </div>
+
+    <p>Phase 0 的目標是讓後續所有工作都有乾淨的落腳點。這一步做好，之後打開電腦就知道去哪裡找什麼、寫什麼。</p>
+
+    <h3>任務清單（按順序執行）</h3>
+    <div class="wf">
+      <div class="wf-step">
+        <div class="wf-n">1</div>
+        <div class="wf-c">
+          <strong>建立 GitHub Private Repo</strong>
+          <p>名字建議 <code>quant-trading</code>，設為 Private。初始化時勾選 Add README。後面有東西值得展示再改成 Public。</p>
+        </div>
+      </div>
+      <div class="wf-step">
+        <div class="wf-n">2</div>
+        <div class="wf-c">
+          <strong>建立 Python 環境</strong>
+          <p>用 <code>pyenv</code> + <code>virtualenv</code>，或 <code>conda</code>。Python 建議 3.11+。安裝基礎庫：<code>pip install pandas numpy matplotlib requests python-dotenv jupyter</code>。ccxt 和 alpaca 庫到 Phase 2 再裝。</p>
+        </div>
+      </div>
+      <div class="wf-step">
+        <div class="wf-n">3</div>
+        <div class="wf-c">
+          <strong>讓 Claude Code 生成目錄初始化腳本</strong>
+          <p>告訴 Claude Code：「按照上面的結構生成一個 bash 腳本，創建所有目錄，每個目錄放一個空的 README.md，並生成 .gitignore 和 .env.example。」一行命令跑完整個結構。</p>
+        </div>
+      </div>
+      <div class="wf-step">
+        <div class="wf-n">4</div>
+        <div class="wf-c">
+          <strong>申請 API Key</strong>
+          <p><strong>Binance Testnet：</strong>訪問 <code>testnet.binance.vision</code>，無需真實 KYC，5 分鐘完成。<br><strong>Alpaca Paper Trading：</strong>訪問 <code>alpaca.markets</code>，免費帳戶，拿到 Paper API Key。<br>填入本地 <code>.env</code>，<strong>不是</strong> <code>.env.example</code>。</p>
+        </div>
+      </div>
+      <div class="wf-step">
+        <div class="wf-n">5</div>
+        <div class="wf-c">
+          <strong>第一個 Git Commit</strong>
+          <p><code>git commit -m "init: project structure, gitignore, env template"</code><br>推送到 GitHub。你的研究記錄從這一刻開始。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="crit">
+      <div class="crit-t">✓ Phase 0 完成標準</div>
+      <ul style="margin:0">
+        <li>Repo 建立完成，目錄結構齊全，推送到 GitHub</li>
+        <li><code>.env</code> 已在 <code>.gitignore</code> 中，且已填好 API Key</li>
+        <li>用一個測試腳本確認 Binance Testnet 和 Alpaca Paper API 可以成功調用</li>
+        <li>第一個 commit 已推送</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ════ PHASE 1 ════ -->
+  <section id="phase1">
+    <div class="sec-head">
+      <div class="ph-badge p1">1</div>
+      <div class="sec-title-blk">
+        <h2>Phase 1：業務學習</h2>
+        <div class="dur">⏱ 3-4 週 · 10 個概念腳本 · 每週 2-3 個</div>
+      </div>
+    </div>
+
+    <p>這個階段的核心原則：<span class="hl">每個概念，用代碼驗證理解，不是用文字記憶。</span> Claude Code 生成腳本，你主動改，問自己能不能解釋每一行。</p>
+
+    <h3>Claude Code 學習工作流（每個概念重複這個 5 步流程）</h3>
+    <div class="card b-p1">
+      <div class="wf">
+        <div class="wf-step">
+          <div class="wf-n">1</div>
+          <div class="wf-c">
+            <strong>給 Claude Code 的 Prompt 模板</strong>
+            <p>「生成一個最小可運行的 Python 腳本，用真實 BTC/USDT 日線數據演示 <em>[概念名稱]</em>。要求：每一行都加業務含義的注釋（不是技術說明），輸出要有可視化圖表，代碼不超過 60 行。」</p>
+          </div>
+        </div>
+        <div class="wf-step">
+          <div class="wf-n">2</div>
+          <div class="wf-c">
+            <strong>跑起來，看輸出是否在直覺上合理</strong>
+            <p>例：EMA 線應該比 SMA 對最近價格更敏感，圖上能看出來嗎？ATR 在大波動期間應該更高，是嗎？</p>
+          </div>
+        </div>
+        <div class="wf-step">
+          <div class="wf-n">3</div>
+          <div class="wf-c">
+            <strong>主動改動（至少選一個）</strong>
+            <p>① 改一個參數，先預測結果再跑驗證（例：EMA 週期從 20 改到 5，線會怎樣？）<br>② 注釋掉一行，看報錯信息，搞清楚這行在幹什麼<br>③ 換一個資產（ETH 或 SPY），規律是否一樣成立？</p>
+          </div>
+        </div>
+        <div class="wf-step">
+          <div class="wf-n">4</div>
+          <div class="wf-c">
+            <strong>自我測試：能回答這三個問題嗎？</strong>
+            <p>① 這個指標在業務上代表什麼意思？<br>② 它的局限性是什麼？在什麼市場環境下會失效？<br>③ 如果用它做交易信號，最大的風險是什麼？</p>
+          </div>
+        </div>
+        <div class="wf-step">
+          <div class="wf-n">5</div>
+          <div class="wf-c">
+            <strong>Commit（帶有意義的 message）</strong>
+            <p>格式：<code>learn: [概念] - [一行關鍵洞察]</code><br>例：<code>learn: ATR - period=14 smooths noise well, period=7 overfits recent vol</code></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h3>學習序列（按週）</h3>
+    <table>
+      <tr>
+        <th style="width:12%">週次</th>
+        <th style="width:40%">腳本</th>
+        <th>學完後能做什麼</th>
+      </tr>
+      <tr>
+        <td class="mono" style="color:var(--p1);white-space:nowrap">週 1</td>
+        <td>
+          <code>01_ohlcv_basics.py</code><br>
+          <code>02_ema_sma.py</code><br>
+          <code>03_atr.py</code>
+        </td>
+        <td>理解 K 線含義，畫出均線，計算波動率，從 Binance 拿到真實數據並存本地</td>
+      </tr>
+      <tr>
+        <td class="mono" style="color:var(--p1);white-space:nowrap">週 2</td>
+        <td>
+          <code>04_sharpe_drawdown.py</code><br>
+          <code>05_position_sizing.py</code>
+        </td>
+        <td>能計算一個策略的 Sharpe 和最大回撤，能用 ATR 計算每筆應該買多少以控制風險</td>
+      </tr>
+      <tr>
+        <td class="mono" style="color:var(--p1);white-space:nowrap">週 3</td>
+        <td>
+          <code>06_simple_backtest.py</code><br>
+          <code>07_backtest_metrics.py</code>
+        </td>
+        <td>跑出第一個完整回測，<strong>手動核對至少 10 筆交易</strong>的計算是否正確</td>
+      </tr>
+      <tr>
+        <td class="mono" style="color:var(--p1);white-space:nowrap">週 4</td>
+        <td>
+          <code>08_overfitting.py</code><br>
+          <code>09_lookahead_bias.py</code><br>
+          <code>10_train_test_split.py</code>
+        </td>
+        <td>能識別自己的回測是否有過擬合或前視偏差，能正確劃分樣本內外數據</td>
+      </tr>
+    </table>
+
+    <div class="co warn">
+      <span class="co-ic">⚠</span>
+      <span>回測結果年化收益超過 80% → 幾乎可以肯定有 bug。最常見是前視偏差：用了當天收盤價來計算當天的買入信號。腳本 09 專門演示這個問題。</span>
+    </div>
+
+    <div class="crit">
+      <div class="crit-t">✓ Phase 1 完成標準：能回答這三個問題</div>
+      <ul style="margin:0">
+        <li>一個策略勝率 35%，平均盈利是平均虧損的 3 倍，<strong>長期期望值是正還是負？</strong>（能說出計算過程）</li>
+        <li>回測 Sharpe 2.5，但只測了 6 個月數據，<strong>這個結果可信嗎？為什麼？</strong></li>
+        <li>為什麼止損要用 ATR 倍數，<strong>而不是固定的 5%？</strong></li>
+      </ul>
+    </div>
+
+    <div class="co info">
+      <span class="co-ic">💡</span>
+      <span>三個問題都能回答 → 進入 Phase 2。有一個答不上來 → 找到對應的學習腳本，重新主動改動幾次，直到真正理解為止。不要靠記答案過關。</span>
+    </div>
+  </section>
+
+  <!-- ════ PHASE 2 ════ -->
+  <section id="phase2">
+    <div class="sec-head">
+      <div class="ph-badge p2">2</div>
+      <div class="sec-title-blk">
+        <h2>Phase 2：策略研究</h2>
+        <div class="dur">⏱ 4-8 週 · 目標 20+ 次有記錄的實驗</div>
+      </div>
+    </div>
+
+    <p>這個階段不寫新的基礎設施，只做一件事：<span class="hl">系統性地提出假設、驗證假設、記錄結論。</span> 每次實驗都是科學實驗，不是亂試一通。</p>
+
+    <h3>首先：搭建回測引擎（Phase 2 第一週）</h3>
+    <p>讓 Claude Code 幫你實現 <code>03_research/backtest/engine.py</code>，但你需要理解並能修改以下每一個組件：</p>
+
+    <div class="card b-p2">
+      <table style="margin:0">
+        <tr><th>組件</th><th>具體要求</th><th>為什麼不能省略</th></tr>
+        <tr>
+          <td><strong>手續費模擬</strong></td>
+          <td>Binance Taker 0.1%，Alpaca 免佣但有 bid-ask spread（加 0.03% 估算）</td>
+          <td>忽略手續費的回測結果通常虛高 20-40%，高頻策略更明顯</td>
+        </tr>
+        <tr>
+          <td><strong>滑點模擬</strong></td>
+          <td>每筆交易加 0.05% 保守估算</td>
+          <td>實盤執行價格永遠比回測的收盤價差，日線策略影響相對小但不能忽視</td>
+        </tr>
+        <tr>
+          <td><strong>固定風險倉位</strong></td>
+          <td>每筆風險 = 賬戶 × 1-2%，止損距離 = 2×ATR，計算買入數量</td>
+          <td>這是控制回撤的核心。倉位相同的策略，回撤可以差 3 倍</td>
+        </tr>
+        <tr>
+          <td><strong>樣本劃分</strong></td>
+          <td>前 70% 樣本內（調參），後 30% 樣本外（驗證）。樣本外數字才算數</td>
+          <td>防止在測試集上優化參數，這是過擬合最常見的成因</td>
+        </tr>
+        <tr>
+          <td><strong>標準化輸出</strong></td>
+          <td>JSON 格式績效報告（方便填入 STRATEGY_LOG） + 淨值曲線圖</td>
+          <td>統一格式讓不同實驗可以直接對比</td>
+        </tr>
+      </table>
+    </div>
+
+    <h3>實驗工作流（每次實驗重複）</h3>
+    <div class="wf">
+      <div class="wf-step">
+        <div class="wf-n">1</div>
+        <div class="wf-c">
+          <strong>在 STRATEGY_LOG.md 先寫假設，再動代碼</strong>
+          <p>「加入 ADX&gt;25 過濾條件能減少震盪市假信號」是假設。「我想試試 ADX」不是假設。先寫再跑，強迫自己想清楚在驗證什麼。</p>
+        </div>
+      </div>
+      <div class="wf-step">
+        <div class="wf-n">2</div>
+        <div class="wf-c">
+          <strong>建立 experiments/exp_XXX/ 文件夾</strong>
+          <p>複製上一個實驗的 <code>config.py</code> 修改參數，不是從零生成。讓 Claude Code 幫你改，但你要知道改了什麼。</p>
+        </div>
+      </div>
+      <div class="wf-step">
+        <div class="wf-n">3</div>
+        <div class="wf-c">
+          <strong>跑回測，保存 results.json</strong>
+          <p>同時跑樣本內和樣本外。只看樣本內結果等於欺騙自己。</p>
+        </div>
+      </div>
+      <div class="wf-step">
+        <div class="wf-n">4</div>
+        <div class="wf-c">
+          <strong>寫 notes.md，更新 STRATEGY_LOG.md</strong>
+          <p>必須寫結論，哪怕是「假設不成立，原因是 X」。失敗的實驗和成功的一樣有價值——它告訴你哪條路走不通。</p>
+        </div>
+      </div>
+      <div class="wf-step">
+        <div class="wf-n">5</div>
+        <div class="wf-c">
+          <strong>Commit</strong>
+          <p>格式：<code>research: exp_XXX [策略名] - OOS Sharpe=X.X MaxDD=-XX%</code><br>把樣本外的關鍵數字放進 commit message，Git log 就是你的實驗摘要。</p>
+        </div>
+      </div>
+    </div>
+
+    <h3>STRATEGY_LOG.md 標準模板</h3>
+<pre><code>## [YYYY-MM-DD] 實驗 #XXX：[一句話描述假設]
+
+### 假設
+[你在驗證什麼，用一句話說清楚]
+
+### 實驗設置
+- 資產：BTC/USDT, ETH/USDT
+- 時間框架：日線
+- 樣本內：2020-01-01 → 2023-06-30
+- 樣本外：2023-07-01 → 2024-12-31
+- 關鍵參數：EMA_fast=20, EMA_slow=50, ATR_mult=2.0, ADX_threshold=25
+
+### 結果
+|          | 樣本內 | 樣本外 |
+|----------|--------|--------|
+| 年化收益 | +28%   | +11%   |
+| 最大回撤 | -16%   | -24%   |
+| Sharpe   | 1.3    | 0.7    |
+| 勝率     | 42%    | 39%    |
+| 盈虧比   | 2.1    | 1.8    |
+
+### 結論
+[樣本外 Sharpe 下降顯著，疑似輕度過擬合。ADX 過濾方向正確但不夠]
+
+### 下一步實驗
+[#XXX+1：調整 ATR 止損倍數，測試 1.5x / 2.0x / 2.5x 對回撤的影響]</code></pre>
+
+    <h3>研究推進序列（建議順序）</h3>
+    <div class="card b-p2">
+      <table style="margin:0">
+        <tr><th>輪次</th><th>測試內容</th><th>目標</th></tr>
+        <tr>
+          <td class="mono" style="color:var(--p2)">第 1 輪</td>
+          <td>EMA 雙均線基準版，同時測 BTC/ETH/SPY/QQQ</td>
+          <td>建立績效基準，了解不同市場的差異</td>
+        </tr>
+        <tr>
+          <td class="mono" style="color:var(--p2)">第 2 輪</td>
+          <td>ADX 過濾 · 成交量確認 · 不同 ATR 止損倍數</td>
+          <td>改善信號質量，降低震盪市的假信號</td>
+        </tr>
+        <tr>
+          <td class="mono" style="color:var(--p2)">第 3 輪</td>
+          <td>日線 vs 4 小時線 · 多時間框架確認</td>
+          <td>找到最優執行頻率，加密和美股可能不一樣</td>
+        </tr>
+        <tr>
+          <td class="mono" style="color:var(--p2)">第 4 輪</td>
+          <td>加密 + 美股組合 · 相關性分析 · 熔斷邏輯</td>
+          <td>測試兩個市場同時持倉時的真實風險</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="crit amber">
+      <div class="crit-t">✓ Phase 2 完成標準</div>
+      <ul style="margin:0">
+        <li>STRATEGY_LOG.md 有 <strong>20+ 條</strong>實驗記錄，每條都有假設和結論</li>
+        <li>找到至少一個策略：<strong>樣本外 Sharpe &gt; 1.0，最大回撤 &lt; 20%</strong></li>
+        <li>這個策略在兩段不同市場環境的數據上都成立（包含牛市和熊市/震盪市）</li>
+        <li>你能用自己的話解釋：這個策略為什麼有效，以及在什麼環境下會失效</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ════ PHASE 3 ════ -->
+  <section id="phase3">
+    <div class="sec-head">
+      <div class="ph-badge p3">3</div>
+      <div class="sec-title-blk">
+        <h2>Phase 3：Paper Trading</h2>
+        <div class="dur">⏱ 6-8 週 · 系統完全自動化運行</div>
+      </div>
+    </div>
+
+    <p>Paper Trading 的目標不是賺紙面盈利，而是<span class="hl">發現所有回測看不見的工程問題</span>：API 斷線、數據延遲、訂單被拒、交易所維護窗口。這裡出問題的代價比實盤低 100 倍。</p>
+
+    <h3>Agent 架構（04_paper_trading/agents/）</h3>
+    <div class="card b-p3">
+      <table style="margin:0">
+        <tr><th>Agent</th><th>職責</th><th>輸入 → 輸出</th></tr>
+        <tr>
+          <td><code style="color:var(--p3)">data_agent</code></td>
+          <td>實時數據拉取與緩存</td>
+          <td>WebSocket 訂閱 → 標準化 OHLCV DataFrame</td>
+        </tr>
+        <tr>
+          <td><code style="color:var(--p3)">signal_agent</code></td>
+          <td>在最新數據上運行策略</td>
+          <td>DataFrame → SignalEvent（方向、強度、標的）</td>
+        </tr>
+        <tr>
+          <td><code style="color:var(--p3)">risk_agent</code></td>
+          <td>風控審核，硬性規則，不可繞過</td>
+          <td>SignalEvent → OrderEvent 或 RejectionEvent</td>
+        </tr>
+        <tr>
+          <td><code style="color:var(--p3)">execution_agent</code></td>
+          <td>執行訂單，記錄結果</td>
+          <td>OrderEvent → FillEvent（或 FailEvent + 報警）</td>
+        </tr>
+      </table>
+    </div>
+
+    <h3>風控 Agent 硬性規則</h3>
+    <div class="card b-gold">
+      <ul style="margin:0">
+        <li><strong>單筆最大虧損：</strong>賬戶的 1.5%。超過此規模的訂單直接拒絕，不需要人工干預</li>
+        <li><strong>每日最大虧損熔斷：</strong>當日累計虧損 &gt; 4% → 停止當日所有交易，發 Telegram 報警</li>
+        <li><strong>最大同時持倉數：</strong>加密貨幣 3 個，美股 5 個</li>
+        <li><strong>相關性限制：</strong>新倉與現有持倉相關係數 &gt; 0.8 時拒絕開新倉（避免名義上分散實際上集中）</li>
+        <li><strong>數據異常保護：</strong>若數據超過 15 分鐘未更新 → 暫停信號生成，發報警，等確認後才繼續</li>
+      </ul>
+    </div>
+
+    <h3>調度時間表</h3>
+    <table>
+      <tr><th>市場</th><th>信號計算頻率</th><th>執行時間</th></tr>
+      <tr>
+        <td><strong>加密貨幣</strong></td>
+        <td>每 4 小時一次</td>
+        <td>00:00 / 04:00 / 08:00 / 12:00 / 16:00 / 20:00 UTC</td>
+      </tr>
+      <tr>
+        <td><strong>美股</strong></td>
+        <td>每個交易日一次</td>
+        <td>美東 16:30 收盤後計算信號，次日開盤前 30 分鐘掛限價單</td>
+      </tr>
+    </table>
+
+    <h3>每日自動報告格式（Telegram 發送）</h3>
+<pre><code>=== 每日交易報告 [2026-09-15] ===
+
+【今日信號】
+  BTC/USDT  ↑ 多    EMA 金叉 + ADX=34  預計倉位 $480
+  ETH/USDT  — 無信號
+  SPY       ↑ 多    趨勢確認           預計倉位 $620
+
+【執行結果】
+  BTC/USDT  買入 0.012 @ $39,800  ✓ 成交
+  SPY       買入 2 股 @ $512.30   ✓ 成交
+
+【當前持倉】
+  BTC +2.3%  |  SPY +0.8%  |  其餘空倉
+
+【帳戶摘要】
+  Paper 總值：$10,234  (+$234 vs 起始)
+  今日 P&L：+$47
+  vs 回測預期偏差：+12%（正常範圍 ±30%）
+
+【系統健康】
+  數據延遲：正常  |  API：正常  |  風控觸發：0 次</code></pre>
+
+    <div class="crit amber">
+      <div class="crit-t">✓ Phase 3 完成標準</div>
+      <ul style="margin:0">
+        <li>連續 <strong>6 週</strong>無重大 Bug（輕微故障可自動恢復）</li>
+        <li>每日報告連續 6 週正常發送，無缺漏</li>
+        <li>Paper Trading 績效與回測預期偏差 <strong>&lt; 30%</strong>（偏差過大說明回測本身有問題）</li>
+        <li>所有風控規則在真實信號下至少觸發過一次，確認規則真的在生效</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ════ PHASE 4 ════ -->
+  <section id="phase4">
+    <div class="sec-head">
+      <div class="ph-badge p4">4</div>
+      <div class="sec-title-blk">
+        <h2>Phase 4：實盤交易</h2>
+        <div class="dur">⏱ Phase 3 完成後才討論 · 05_live/ 現在只有一個 README</div>
+      </div>
+    </div>
+
+    <div class="co warn">
+      <span class="co-ic">🚨</span>
+      <span><strong>Phase 3 完成標準 100% 達到之前，05_live/ 目錄不動任何代碼。</strong>這條規則的存在是為了保護你自己，不是形式要求。</span>
+    </div>
+
+    <p>技術上，從 Paper 切換到 Live 只需要做一件事：<strong style="color:var(--text-bright)">把 API 端點從 Testnet/Paper 換成正式環境。</strong> 代碼邏輯不需要改。</p>
+
+    <h3>進入實盤的前置條件清單（放在 05_live/README.md 裡）</h3>
+    <div class="card b-p4">
+      <ul style="margin:0">
+        <li>[ ] Phase 3 所有完成標準達到</li>
+        <li>[ ] Paper Trading 績效與回測偏差 &lt; 30%</li>
+        <li>[ ] 第一個月實盤資金為計劃規模的 <strong>20%</strong>（試跑期，不是省錢）</li>
+        <li>[ ] 所有風控參數收緊 50%（例：單筆風險從 1.5% 降到 0.75%）</li>
+        <li>[ ] Paper Trading 系統繼續並行運行至少 1 個月（對比驗證）</li>
+        <li>[ ] 已了解香港對加密貨幣交易的稅務立場（HK 無資本利得稅，但加密貨幣有特殊規定）</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ════ GUARDRAILS ════ -->
+  <section id="guardrails">
+    <div class="sec-head">
+      <div class="ph-badge pu">⚙</div>
+      <div class="sec-title-blk">
+        <h2>核心守則</h2>
+        <div class="dur">貫穿全程，沒有例外，沒有「這次先跳過」</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <table style="margin:0">
+        <tr><th style="width:28%">守則</th><th style="width:38%">具體行動</th><th>違反的後果</th></tr>
+        <tr>
+          <td><span class="hl">API 金鑰零容忍</span></td>
+          <td><code>.env</code> 在 <code>.gitignore</code> 第一行，每次 commit 前確認</td>
+          <td>金鑰洩露，帳戶被盜，損失無法挽回</td>
+        </tr>
+        <tr>
+          <td><span class="hl">研究日誌強制</span></td>
+          <td>每次實驗都更新 STRATEGY_LOG，哪怕結果是失敗</td>
+          <td>三個月後不知道自己試過什麼，重複踩同樣的坑</td>
+        </tr>
+        <tr>
+          <td><span class="hl">完成標準不妥協</span></td>
+          <td>三個問題答不上來不進 Phase 2；Sharpe &lt; 1 不進 Phase 3</td>
+          <td>建立在不穩定地基上的系統，失敗是必然的</td>
+        </tr>
+        <tr>
+          <td><span class="hl">手動核對回測</span></td>
+          <td>新的回測引擎完成後，至少核對 10 筆交易的計算</td>
+          <td>帶 bug 的回測結果完全誤導策略選擇，虛假繁榮</td>
+        </tr>
+        <tr>
+          <td><span class="hl">不過早優化</span></td>
+          <td>Phase 1 代碼醜沒關係，Phase 2 才開始重構</td>
+          <td>在目標未確定前的重構是浪費時間，且大概率方向錯誤</td>
+        </tr>
+        <tr>
+          <td><span class="hl">LLM 不做交易決策</span></td>
+          <td>Claude Code 只幫你寫代碼，信號由確定性邏輯生成</td>
+          <td>LLM 輸出不一致，不適合需要可重複性的交易執行</td>
+        </tr>
+        <tr>
+          <td><span class="hl">學習 = 能解釋</span></td>
+          <td>看完 Claude Code 生成的代碼後，問自己能改嗎</td>
+          <td>「能跑起來」和「理解了」是兩件事，後者才有用</td>
+        </tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- ════ QUICK REFERENCE ════ -->
+  <section id="quickref">
+    <div class="sec-head">
+      <div class="ph-badge gr">≡</div>
+      <div class="sec-title-blk"><h2>快速參考</h2></div>
+    </div>
+
+    <h3>Git Commit Message 規範</h3>
+<pre><code>init:      初始化結構（只用一次）
+learn:     學習階段腳本   → learn: ATR - key insight here
+data:      數據管道相關
+research:  策略實驗       → research: exp_005 - OOS Sharpe=1.2 MaxDD=-17%
+backtest:  回測引擎改動
+paper:     Paper Trading 系統改動
+fix:       Bug 修復
+refactor:  代碼重構（不改功能）
+docs:      文檔 / STRATEGY_LOG / DECISIONS 更新</code></pre>
+
+    <h3>核心績效指標速查</h3>
+    <table>
+      <tr><th>指標</th><th>定義</th><th>趨勢跟蹤的一般標準</th></tr>
+      <tr>
+        <td><strong>Sharpe Ratio</strong></td>
+        <td>年化超額收益 / 年化波動率</td>
+        <td>&gt; 1.0 才考慮進 Phase 3，&gt; 2.0 是很好的策略</td>
+      </tr>
+      <tr>
+        <td><strong>Max Drawdown</strong></td>
+        <td>從峰值到谷底的最大連續虧損</td>
+        <td>趨勢跟蹤通常 15-25%，超過 30% 需要重新看風控</td>
+      </tr>
+      <tr>
+        <td><strong>Win Rate</strong></td>
+        <td>盈利交易數 / 總交易數</td>
+        <td>35-50% 正常。低勝率 + 高盈虧比 = 可以盈利</td>
+      </tr>
+      <tr>
+        <td><strong>Profit Factor</strong></td>
+        <td>總盈利 / 總虧損</td>
+        <td>&gt; 1.5 才有意義，&gt; 2.0 是健康的策略</td>
+      </tr>
+      <tr>
+        <td><strong>OOS Decay</strong></td>
+        <td>樣本外 Sharpe / 樣本內 Sharpe</td>
+        <td>&gt; 0.6 說明過擬合程度可接受，&lt; 0.5 需要重新設計</td>
+      </tr>
+    </table>
+
+    <h3>常見 Bug 與對應檢查</h3>
+    <table>
+      <tr><th>現象</th><th>最可能的原因</th><th>怎麼查</th></tr>
+      <tr>
+        <td>回測年化 &gt; 80%</td>
+        <td>前視偏差</td>
+        <td>確認信號計算時用的是前一天收盤價，不是當天</td>
+      </tr>
+      <tr>
+        <td>樣本外 Sharpe 比樣本內低一半以上</td>
+        <td>過擬合</td>
+        <td>減少可調參數，只保留有業務含義的</td>
+      </tr>
+      <tr>
+        <td>Paper 績效遠差於回測</td>
+        <td>手續費/滑點低估</td>
+        <td>對比每筆交易的成本假設</td>
+      </tr>
+      <tr>
+        <td>某天突然大虧</td>
+        <td>風控沒有生效</td>
+        <td>檢查 risk_agent 的日誌，確認觸發條件是否正確</td>
+      </tr>
+    </table>
+
+    <h3>工具清單</h3>
+    <table>
+      <tr><th>用途</th><th>工具</th><th>費用</th></tr>
+      <tr><td>加密幣歷史數據</td><td>Binance REST API</td><td>免費</td></tr>
+      <tr><td>美股歷史數據</td><td>Alpaca Markets API</td><td>免費 tier 夠用</td></tr>
+      <tr><td>加密幣 Paper Trading</td><td>Binance Testnet（testnet.binance.vision）</td><td>免費</td></tr>
+      <tr><td>美股 Paper Trading</td><td>Alpaca Paper Trading</td><td>免費</td></tr>
+      <tr><td>數據處理</td><td>pandas + numpy</td><td>免費</td></tr>
+      <tr><td>可視化</td><td>matplotlib（學習）+ plotly（回測圖表）</td><td>免費</td></tr>
+      <tr><td>報警通知</td><td>Telegram Bot API（5 分鐘配置完）</td><td>免費</td></tr>
+      <tr><td>回測框架</td><td>自寫（推薦）或 Vectorbt（快速驗證）</td><td>免費</td></tr>
+    </table>
+
+    <div style="margin-top: 44px; padding: 20px 24px; border: 1px solid var(--border); border-radius: 10px; display: flex; align-items: center; justify-content: space-between; flex-wrap: gap; gap: 20px;">
+      <div>
+        <div style="font-family: var(--font-d); font-weight: 700; color: var(--text-bright); font-size: 14px; margin-bottom: 4px;">預計完整時間線</div>
+        <div style="font-size: 13px; color: var(--text-muted);">基於 5-10 小時 / 週的投入</div>
+      </div>
+      <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+        <div style="text-align:center"><div class="mono" style="color:var(--p0)">1-2天</div><div style="font-size:11px;color:var(--text-muted)">Phase 0</div></div>
+        <div style="text-align:center"><div class="mono" style="color:var(--p1)">3-4週</div><div style="font-size:11px;color:var(--text-muted)">Phase 1</div></div>
+        <div style="text-align:center"><div class="mono" style="color:var(--p2)">4-8週</div><div style="font-size:11px;color:var(--text-muted)">Phase 2</div></div>
+        <div style="text-align:center"><div class="mono" style="color:var(--p3)">6-8週</div><div style="font-size:11px;color:var(--text-muted)">Phase 3</div></div>
+        <div style="text-align:center"><div class="mono" style="color:var(--gold)">4-6個月</div><div style="font-size:11px;color:var(--text-muted)">總計</div></div>
+      </div>
+    </div>
+
+    <div style="margin-top: 16px; text-align: center; color: var(--text-dim); font-size: 13px; padding: 12px;">
+      先把 Phase 0 建好，其他的邊做邊看。<span style="color:var(--gold)">每一天的工作都有 Git 記錄，永遠不會白費。</span>
+    </div>
+  </section>
+
+</main>
+
+<script>
+  // Scroll spy
+  const sections = document.querySelectorAll('section[id]');
+  const navItems = document.querySelectorAll('.nav-item[data-s]');
+
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        const id = e.target.id;
+        navItems.forEach(n => n.classList.toggle('active', n.dataset.s === id));
+      }
+    });
+  }, { rootMargin: '-15% 0px -75% 0px' });
+
+  sections.forEach(s => io.observe(s));
+
+  // Smooth nav click
+  navItems.forEach(item => {
+    item.addEventListener('click', e => {
+      e.preventDefault();
+      const target = document.querySelector(item.getAttribute('href'));
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+</script>
+</body>
+</html>
