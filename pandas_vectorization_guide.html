@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pandas 向量化操作學習手冊</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #f4f6fa;
+      --bg-card:     #ffffff;
+      --bg-card-2:   #edf1f7;
+      --border:      rgba(0,0,0,0.08);
+      --border-b:    rgba(0,0,0,0.13);
+      --text:        #374151;
+      --text-bright: #111827;
+      --text-muted:  #6b7280;
+      --text-dim:    #9ca3af;
+      --gold:        #b45309;
+      --gold-bg:     rgba(180,83,9,0.08);
+      --blue:        #2563eb;
+      --green:       #059669;
+      --red:         #dc2626;
+      --purple:      #7c3aed;
+      --amber:       #d97706;
+      --p0: #4f46e5; --p0-bg: rgba(79,70,229,0.1);
+      --p1: #16a34a; --p1-bg: rgba(22,163,74,0.1);
+      --p2: #2563eb; --p2-bg: rgba(37,99,235,0.1);
+      --p3: #d97706; --p3-bg: rgba(217,119,6,0.1);
+      --p4: #dc2626; --p4-bg: rgba(220,38,38,0.1);
+      --code-bg:     #e8edf5;
+      --sw:          230px;
+      --font-d: 'Syne', sans-serif;
+      --font-b: 'Plus Jakarta Sans', sans-serif;
+      --font-m: 'JetBrains Mono', monospace;
+    }
+
+    html { scroll-behavior: smooth; }
+    body { background: var(--bg); color: var(--text); font-family: var(--font-b); font-size: 20px; line-height: 1.72; min-height: 100vh; }
+
+    /* ── Sidebar ─────────────────────────────── */
+    .sidebar {
+      position: fixed; top: 0; left: 0;
+      width: var(--sw); height: 100vh;
+      background: var(--bg-card); border-right: 1px solid var(--border);
+      overflow-y: auto; z-index: 100;
+      display: flex; flex-direction: column;
+    }
+    .sb-brand { padding: 22px 20px 18px; border-bottom: 1px solid var(--border); }
+    .sb-brand .logo { font-family: var(--font-d); font-size: 14px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--gold); }
+    .sb-brand .sub  { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+    .sb-nav  { padding: 14px 0; flex: 1; }
+    .nav-lbl { font-size: 12px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--text-dim); padding: 12px 20px 4px; }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 20px; cursor: pointer; transition: all .15s;
+      text-decoration: none; color: var(--text-muted); font-size: 15px;
+    }
+    .nav-item:hover { color: var(--text); background: rgba(0,0,0,0.04); }
+    .nav-item.active { color: var(--text-bright); background: rgba(0,0,0,0.07); }
+    .nav-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; background: var(--text-dim); transition: background .15s; }
+    .nav-item:hover .nav-dot, .nav-item.active .nav-dot { background: var(--gold); }
+    .nav-item[data-p="0"] .nav-dot { background: var(--p0); }
+    .nav-item[data-p="1"] .nav-dot { background: var(--p1); }
+    .nav-item[data-p="2"] .nav-dot { background: var(--p2); }
+    .nav-item[data-p="3"] .nav-dot { background: var(--p3); }
+    .sb-footer {
+      padding: 14px 20px; border-top: 1px solid var(--border);
+      font-size: 13px; color: var(--text-muted); line-height: 1.8;
+    }
+    .sb-footer span { display: block; }
+    .sb-footer span::before { content: '→ '; color: var(--gold); }
+
+    /* ── Main ────────────────────────────────── */
+    .main { margin-left: var(--sw); max-width: 900px; padding: 48px 56px 96px; }
+
+    /* ── Page header ─────────────────────────── */
+    .pg-header { margin-bottom: 52px; padding-bottom: 36px; border-bottom: 1px solid var(--border); }
+    .pg-header h1 { font-family: var(--font-d); font-size: 40px; font-weight: 800; color: var(--text-bright); letter-spacing: -.02em; line-height: 1.2; }
+    .pg-header .tagline { margin-top: 8px; font-size: 19px; color: var(--text-muted); }
+    .pg-header .meta { margin-top: 16px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .badge { font-family: var(--font-m); font-size: 13px; padding: 3px 9px; border-radius: 4px; background: var(--bg-card); border: 1px solid var(--border); color: var(--text-muted); }
+
+    /* ── Section ─────────────────────────────── */
+    section { margin-bottom: 60px; }
+    .sec-head { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 22px; }
+    .ph-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 40px; height: 40px; border-radius: 10px;
+      font-family: var(--font-d); font-size: 16px; font-weight: 800;
+      flex-shrink: 0; margin-top: 2px;
+    }
+    .ph-badge.g   { background: var(--gold-bg);  color: var(--gold);   }
+    .ph-badge.p0  { background: var(--p0-bg);    color: var(--p0);     }
+    .ph-badge.p1  { background: var(--p1-bg);    color: var(--p1);     }
+    .ph-badge.p2  { background: var(--p2-bg);    color: var(--p2);     }
+    .ph-badge.p3  { background: var(--p3-bg);    color: var(--p3);     }
+    .ph-badge.pu  { background: rgba(167,139,250,.1); color: var(--purple); }
+    .ph-badge.gr  { background: rgba(45,206,137,.1);  color: var(--green);  }
+    .sec-title-blk h2 { font-family: var(--font-d); font-size: 28px; font-weight: 700; color: var(--text-bright); letter-spacing: -.01em; }
+    .dur { font-size: 16px; color: var(--text-muted); margin-top: 3px; font-family: var(--font-m); }
+    h3 { font-family: var(--font-d); font-size: 19px; font-weight: 700; color: var(--text-bright); margin: 28px 0 11px; letter-spacing: .01em; text-transform: uppercase; }
+    p  { margin-bottom: 11px; }
+
+    /* ── Cards ───────────────────────────────── */
+    .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 20px 24px; margin-bottom: 14px; }
+    .card.b-gold { border-left: 3px solid var(--gold); }
+    .card.b-p0   { border-left: 3px solid var(--p0);   }
+    .card.b-p1   { border-left: 3px solid var(--p1);   }
+    .card.b-p2   { border-left: 3px solid var(--p2);   }
+    .card.b-p3   { border-left: 3px solid var(--p3);   }
+
+    /* ── Confirm banner ──────────────────────── */
+    .confirm-box { background: rgba(240,160,32,.06); border: 1px solid rgba(240,160,32,.22); border-radius: 12px; padding: 20px 24px; margin-bottom: 14px; }
+    .confirm-box .ct { font-family: var(--font-d); font-size: 14px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--gold); margin-bottom: 14px; }
+    .ci { display: flex; gap: 12px; margin-bottom: 12px; font-size: 19px; }
+    .ci-num { font-family: var(--font-m); font-size: 13px; color: var(--gold); background: rgba(240,160,32,.1); padding: 2px 8px; border-radius: 4px; flex-shrink: 0; height: fit-content; margin-top: 3px; }
+    .ci strong { color: var(--text-bright); }
+
+    /* ── Criteria box ────────────────────────── */
+    .crit { background: rgba(34,197,94,.05); border: 1px solid rgba(34,197,94,.2); border-radius: 10px; padding: 16px 20px; margin-top: 20px; }
+    .crit.amber { background: rgba(245,158,11,.05); border-color: rgba(245,158,11,.2); }
+    .crit.red   { background: rgba(239,68,68,.05);  border-color: rgba(239,68,68,.2);  }
+    .crit-t { font-family: var(--font-m); font-size: 13px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--green); margin-bottom: 10px; }
+    .crit.amber .crit-t { color: var(--p3); }
+    .crit.red   .crit-t { color: var(--red); }
+
+    /* ── Callouts ────────────────────────────── */
+    .co { border-radius: 8px; padding: 13px 16px; margin: 11px 0; font-size: 18px; display: flex; gap: 10px; align-items: flex-start; }
+    .co.warn { background: rgba(220,38,38,.06);    border: 1px solid rgba(220,38,38,.25);   color: #991b1b; }
+    .co.info { background: rgba(37,99,235,.06);   border: 1px solid rgba(37,99,235,.25);   color: #1e40af; }
+    .co.tip  { background: rgba(5,150,105,.06);   border: 1px solid rgba(5,150,105,.25);   color: #065f46; }
+    .co-ic { flex-shrink: 0; }
+
+    /* ── Workflow steps ──────────────────────── */
+    .wf { }
+    .wf-step { display: flex; gap: 14px; margin-bottom: 16px; }
+    .wf-n { width: 26px; height: 26px; border-radius: 50%; background: var(--bg-card-2); border: 1px solid var(--border-b); display: flex; align-items: center; justify-content: center; font-family: var(--font-m); font-size: 14px; color: var(--gold); flex-shrink: 0; margin-top: 2px; }
+    .wf-c strong { color: var(--text-bright); display: block; margin-bottom: 3px; font-size: 19px; }
+    .wf-c p { margin: 0; font-size: 18px; color: var(--text-muted); }
+
+    /* ── Tables ──────────────────────────────── */
+    table { width: 100%; border-collapse: collapse; margin: 11px 0; font-size: 18px; }
+    th { background: var(--bg-card-2); color: var(--text-bright); font-family: var(--font-d); font-size: 15px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border-b); }
+    td { padding: 10px 14px; border-bottom: 1px solid var(--border); vertical-align: top; line-height: 1.55; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(0,0,0,0.025); }
+
+    /* ── Code ────────────────────────────────── */
+    pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; overflow-x: auto; margin: 11px 0; font-family: var(--font-m); font-size: 16px; line-height: 1.65; color: #374151; }
+    code { font-family: var(--font-m); font-size: 16px; background: var(--code-bg); border: 1px solid var(--border); padding: 1px 6px; border-radius: 4px; color: #374151; }
+    pre code { background: none; border: none; padding: 0; }
+    .t-dir  { color: #1d4ed8; }
+    .t-gold { color: var(--gold); }
+    .t-red  { color: #b91c1c; }
+    .t-dim  { color: #9ca3af; }
+    .t-p0   { color: var(--p0); }
+    .t-p1   { color: var(--p1); }
+    .t-p2   { color: var(--p2); }
+    .t-p3   { color: var(--p3); }
+    .t-green { color: var(--green); }
+
+    /* ── Lists ───────────────────────────────── */
+    ul, ol { padding-left: 20px; margin-bottom: 11px; }
+    li { margin-bottom: 6px; color: var(--text); line-height: 1.65; }
+    li strong { color: var(--text-bright); }
+
+    /* ── Checklist ───────────────────────────── */
+    .checklist { list-style: none; padding-left: 0; }
+    .checklist li { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 10px; }
+    .checklist li::before { content: '☐'; font-size: 18px; color: var(--text-dim); flex-shrink: 0; line-height: 1.65; }
+    .checklist li.done::before { content: '☑'; color: var(--green); }
+
+    /* ── Mindset compare ─────────────────────── */
+    .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 11px 0; }
+    .compare-box { border-radius: 10px; padding: 16px 18px; }
+    .compare-box.bad  { background: rgba(220,38,38,.05); border: 1px solid rgba(220,38,38,.2); }
+    .compare-box.good { background: rgba(5,150,105,.05); border: 1px solid rgba(5,150,105,.2); }
+    .compare-label { font-family: var(--font-m); font-size: 12px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 10px; }
+    .compare-box.bad  .compare-label { color: var(--red); }
+    .compare-box.good .compare-label { color: var(--green); }
+
+    /* ── Helpers ─────────────────────────────── */
+    hr { border: none; border-top: 1px solid var(--border); margin: 44px 0; }
+    .hl     { color: var(--gold);  font-weight: 600; }
+    .hl-g   { color: var(--green); font-weight: 600; }
+    .hl-r   { color: var(--red);   font-weight: 600; }
+    .mono   { font-family: var(--font-m); font-size: 12.5px; }
+
+    /* ── Scrollbar ───────────────────────────── */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: #1e3050; border-radius: 3px; }
+
+    /* ── Print / Responsive ──────────────────── */
+    @media print { .sidebar { display: none; } .main { margin-left: 0; padding: 20px; max-width: 100%; } }
+    @media (max-width: 800px) { .sidebar { display: none; } .main { margin-left: 0; padding: 24px 20px; } .compare { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════ SIDEBAR ═══════════════ -->
+<aside class="sidebar">
+  <div class="sb-brand">
+    <div class="logo">量化交易</div>
+    <div class="sub">Pandas 向量化 · 學習手冊</div>
+  </div>
+  <nav class="sb-nav">
+    <div class="nav-lbl">核心概念</div>
+    <a href="#mindset"   class="nav-item" data-s="mindset">  <span class="nav-dot"></span> 思維方式切換</a>
+    <a href="#ops"       class="nav-item" data-s="ops">      <span class="nav-dot"></span> 核心操作清單</a>
+    <div class="nav-lbl">實戰應用</div>
+    <a href="#quant"     class="nav-item" data-p="1" data-s="quant"><span class="nav-dot"></span> 量化場景示例</a>
+    <a href="#patterns"  class="nav-item" data-p="2" data-s="patterns"><span class="nav-dot"></span> 常用模式速查</a>
+    <div class="nav-lbl">學習計畫</div>
+    <a href="#plan"      class="nav-item" data-p="3" data-s="plan"><span class="nav-dot"></span> 兩週學習路徑</a>
+    <a href="#verify"    class="nav-item" data-s="verify">   <span class="nav-dot"></span> 自我驗收標準</a>
+  </nav>
+  <div class="sb-footer">
+    <span>零 for loop 是目標</span>
+    <span>先跑起來再優化</span>
+    <span>BTC 數據是最好的練習材料</span>
+    <span>理解語義，不要死記 API</span>
+  </div>
+</aside>
+
+<!-- ═══════════════ MAIN ═══════════════════ -->
+<main class="main">
+
+  <!-- PAGE HEADER -->
+  <div class="pg-header">
+    <h1>Pandas 向量化數據操作</h1>
+    <p class="tagline">從 Java / Go 的循環思維，切換到 pandas 的向量化思維</p>
+    <div class="meta">
+      <span class="badge">預計 1–2 週</span>
+      <span class="badge">Python 3.11+</span>
+      <span class="badge">pandas · numpy</span>
+      <span class="badge">量化前置技能</span>
+    </div>
+  </div>
+
+  <!-- ════ MINDSET ════ -->
+  <section id="mindset">
+    <div class="sec-head">
+      <div class="ph-badge g">!</div>
+      <div class="sec-title-blk">
+        <h2>思維方式切換：最重要的一步</h2>
+        <div class="dur">這不是語法問題，是解決問題方式的根本切換</div>
+      </div>
+    </div>
+
+    <p>你在 Java / Go 裡的習慣是「逐行遍歷數據，對每一行做操作」。pandas 的向量化思維是「把整列數據視為一個對象，一次性描述對整列的操作」。這個切換才是學習 pandas 最難的地方。</p>
+
+    <div class="confirm-box">
+      <div class="ct">⚠ 核心認知：向量化 ≠ 語法糖</div>
+      <div class="ci">
+        <span class="ci-num">為什麼</span>
+        <div>向量化操作由底層 C/Fortran 執行，速度比 Python for loop <strong>快 100–1000 倍</strong>。在量化場景裡，你會處理幾十萬行 OHLCV 數據，速度差距直接影響策略回測的可行性。</div>
+      </div>
+      <div class="ci">
+        <span class="ci-num">怎麼用</span>
+        <div>每當你想寫 <code>for i in range(len(df))</code>，先停一下——問自己：「這個操作能不能用一個 pandas 方法描述？」90% 的情況答案是可以。</div>
+      </div>
+    </div>
+
+    <h3>思維對比</h3>
+    <div class="compare">
+      <div class="compare-box bad">
+        <div class="compare-label">❌ 舊思維（Java / Go 習慣）</div>
+        <pre><code><span class="t-red"># 逐行計算收益率</span>
+returns = []
+for i in range(1, len(df)):
+    r = df['close'][i] / df['close'][i-1] - 1
+    returns.append(r)
+df['return'] = [None] + returns</code></pre>
+        <p style="font-size:15px;color:var(--text-muted);margin-top:8px;margin-bottom:0">Python for loop，100k 行約需 200ms+</p>
+      </div>
+      <div class="compare-box good">
+        <div class="compare-label">✓ 向量化思維（pandas 方式）</div>
+        <pre><code><span class="t-green"># 整列一次操作</span>
+df['return'] = df['close'].pct_change()
+
+
+
+</code></pre>
+        <p style="font-size:15px;color:var(--text-muted);margin-top:8px;margin-bottom:0">底層 C 執行，同樣數據約需 1–2ms</p>
+      </div>
+    </div>
+
+    <div class="co info">
+      <span class="co-ic">💡</span>
+      <span><strong>類比：</strong>如果說 Go 的 for loop 是「親自去倉庫逐一搬貨」，那向量化就是「告訴叉車把整托盤貨一次搬走」。你描述的是意圖，底層決定怎麼執行。</span>
+    </div>
+  </section>
+
+  <!-- ════ OPS ════ -->
+  <section id="ops">
+    <div class="sec-head">
+      <div class="ph-badge p0">01</div>
+      <div class="sec-title-blk">
+        <h2>核心操作清單</h2>
+        <div class="dur">量化工作 95% 的數據操作，都由這些方法組合完成</div>
+      </div>
+    </div>
+
+    <h3>數據結構基礎</h3>
+    <div class="card b-p0">
+      <table>
+        <thead><tr><th>概念</th><th>類比（Go）</th><th>說明</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>Series</code></td>
+            <td><code>[]float64</code> + 索引</td>
+            <td>一維帶標籤數組，類似一列數據</td>
+          </tr>
+          <tr>
+            <td><code>DataFrame</code></td>
+            <td><code>[]map[string]float64</code></td>
+            <td>二維表格，每列是一個 Series；量化中的 OHLCV 就是一個 DataFrame</td>
+          </tr>
+          <tr>
+            <td><code>df.index</code></td>
+            <td>map 的 key</td>
+            <td>通常是時間戳（DatetimeIndex），用於對齊不同數據源</td>
+          </tr>
+          <tr>
+            <td><code>df.dtypes</code></td>
+            <td>struct 的欄位型別</td>
+            <td>每列的數據類型，float64 / int64 / object 等</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>位移與滾動（量化最常用）</h3>
+    <div class="card b-p1">
+      <table>
+        <thead><tr><th>方法</th><th>語義</th><th>典型用途</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>.shift(n)</code></td>
+            <td>把整列數據向下位移 n 行（正數向下，負數向上）</td>
+            <td>計算昨日收盤價、lag 特徵、收益率</td>
+          </tr>
+          <tr>
+            <td><code>.rolling(n)</code></td>
+            <td>以 n 為窗口大小，對每個位置取前 n 行做聚合</td>
+            <td>移動平均、滾動標準差、滾動最大值</td>
+          </tr>
+          <tr>
+            <td><code>.expanding()</code></td>
+            <td>從第一行到當前行的累積窗口</td>
+            <td>累積最大回撤、累積收益</td>
+          </tr>
+          <tr>
+            <td><code>.ewm(span=n)</code></td>
+            <td>指數加權移動窗口</td>
+            <td>EMA（指數移動平均）</td>
+          </tr>
+          <tr>
+            <td><code>.diff(n)</code></td>
+            <td>當前值 - 前 n 行的值</td>
+            <td>價格變動量、動量計算</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>篩選與布林索引</h3>
+    <div class="card b-p2">
+      <pre><code><span class="t-dim"># 篩選收盤價 > 50000 的行</span>
+high_price = df[df['close'] > 50000]
+
+<span class="t-dim"># 多條件篩選（注意用 & | 而不是 and or）</span>
+signal_rows = df[(df['ma5'] > df['ma20']) & (df['volume'] > df['volume'].mean())]
+
+<span class="t-dim"># .loc 用標籤，.iloc 用位置索引</span>
+df.loc['2024-01-01':'2024-06-30', 'close']   <span class="t-dim"># 按日期範圍取一列</span>
+df.iloc[-20:, :]                              <span class="t-dim"># 最後 20 行</span></code></pre>
+    </div>
+
+    <h3>分組、合併、重採樣</h3>
+    <div class="card b-p3">
+      <table>
+        <thead><tr><th>方法</th><th>說明</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><code>.groupby('col').agg(...)</code></td>
+            <td>按某列分組再聚合，例如按月計算平均收益率</td>
+          </tr>
+          <tr>
+            <td><code>pd.concat([df1, df2])</code></td>
+            <td>縱向拼接兩個 DataFrame（行數增加）</td>
+          </tr>
+          <tr>
+            <td><code>df1.merge(df2, on='date')</code></td>
+            <td>按日期欄位做 JOIN，合併兩個數據源</td>
+          </tr>
+          <tr>
+            <td><code>.resample('W').agg(...)</code></td>
+            <td>時間序列重採樣，日線轉周線</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Apply（向量化不夠時的退路）</h3>
+    <div class="co warn">
+      <span class="co-ic">⚠</span>
+      <span><code>.apply()</code> 本質上仍是 Python 循環，比原生向量化慢很多。只在邏輯無法向量化時使用，不要把它當預設選項。</span>
+    </div>
+    <pre><code><span class="t-dim"># 只在邏輯複雜、無法向量化時才用 apply</span>
+def classify_candle(row):
+    if row['close'] > row['open']:
+        return 'bullish'
+    return 'bearish'
+
+df['candle_type'] = df.apply(classify_candle, axis=1)
+
+<span class="t-dim"># 上面這個其實可以向量化：</span>
+df['candle_type'] = (df['close'] > df['open']).map({True: 'bullish', False: 'bearish'})</code></pre>
+  </section>
+
+  <!-- ════ QUANT ════ -->
+  <section id="quant">
+    <div class="sec-head">
+      <div class="ph-badge p1">02</div>
+      <div class="sec-title-blk">
+        <h2>量化場景示例</h2>
+        <div class="dur">把核心操作應用到實際策略計算中</div>
+      </div>
+    </div>
+
+    <h3>收益率與風險指標</h3>
+    <pre><code>import pandas as pd
+import numpy as np
+
+<span class="t-dim"># 假設 df 是 OHLCV DataFrame，index 為 DatetimeIndex</span>
+
+<span class="t-dim"># 日收益率</span>
+df['daily_return'] = df['close'].pct_change()
+
+<span class="t-dim"># 累積收益率</span>
+df['cum_return'] = (1 + df['daily_return']).cumprod() - 1
+
+<span class="t-dim"># 年化夏普比率（假設無風險利率為 0）</span>
+sharpe = df['daily_return'].mean() / df['daily_return'].std() * np.sqrt(252)
+
+<span class="t-dim"># 最大回撤</span>
+rolling_max = df['close'].expanding().max()
+drawdown    = df['close'] / rolling_max - 1
+max_dd      = drawdown.min()</code></pre>
+
+    <h3>技術指標計算</h3>
+    <pre><code><span class="t-dim"># 移動平均</span>
+df['ma5']  = df['close'].rolling(5).mean()
+df['ma20'] = df['close'].rolling(20).mean()
+df['ema12'] = df['close'].ewm(span=12, adjust=False).mean()
+
+<span class="t-dim"># 布林帶</span>
+df['bb_mid']   = df['close'].rolling(20).mean()
+df['bb_std']   = df['close'].rolling(20).std()
+df['bb_upper'] = df['bb_mid'] + 2 * df['bb_std']
+df['bb_lower'] = df['bb_mid'] - 2 * df['bb_std']
+
+<span class="t-dim"># RSI（14 日）</span>
+delta = df['close'].diff()
+gain  = delta.clip(lower=0).rolling(14).mean()
+loss  = (-delta.clip(upper=0)).rolling(14).mean()
+df['rsi'] = 100 - (100 / (1 + gain / loss))</code></pre>
+
+    <h3>信號生成</h3>
+    <pre><code><span class="t-dim"># MA 金叉死叉信號（不用 if-else，直接比較兩列）</span>
+df['signal'] = 0
+df.loc[df['ma5'] > df['ma20'], 'signal'] = 1   <span class="t-dim"># 做多</span>
+df.loc[df['ma5'] < df['ma20'], 'signal'] = -1  <span class="t-dim"># 做空</span>
+
+<span class="t-dim"># 只在信號發生變化時觸發（去除持倉期間的重複信號）</span>
+df['trade_signal'] = df['signal'].diff().fillna(0)</code></pre>
+
+    <div class="co tip">
+      <span class="co-ic">✓</span>
+      <span><strong>關鍵習慣：</strong>先在小數據集（100-200 行）上驗證邏輯，確認結果正確後再跑全量數據。用 <code>df.head(20)</code> 和 <code>print</code> 是你最好的調試工具。</span>
+    </div>
+  </section>
+
+  <!-- ════ PATTERNS ════ -->
+  <section id="patterns">
+    <div class="sec-head">
+      <div class="ph-badge p2">03</div>
+      <div class="sec-title-blk">
+        <h2>常用模式速查</h2>
+        <div class="dur">遇到問題先查這裡，不要先搜 Stack Overflow</div>
+      </div>
+    </div>
+
+    <div class="card b-p2">
+      <table>
+        <thead><tr><th>需求</th><th>寫法</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>昨日收盤價</td>
+            <td><code>df['close'].shift(1)</code></td>
+          </tr>
+          <tr>
+            <td>N 日最高價</td>
+            <td><code>df['high'].rolling(N).max()</code></td>
+          </tr>
+          <tr>
+            <td>欄位是否大於前一日</td>
+            <td><code>df['close'] > df['close'].shift(1)</code></td>
+          </tr>
+          <tr>
+            <td>刪除含 NaN 的行</td>
+            <td><code>df.dropna()</code></td>
+          </tr>
+          <tr>
+            <td>用前值填充 NaN</td>
+            <td><code>df.fillna(method='ffill')</code></td>
+          </tr>
+          <tr>
+            <td>按日期排序</td>
+            <td><code>df.sort_index()</code></td>
+          </tr>
+          <tr>
+            <td>取某段時間</td>
+            <td><code>df.loc['2024-01':'2024-06']</code></td>
+          </tr>
+          <tr>
+            <td>日線轉周線（取最後一日收盤）</td>
+            <td><code>df['close'].resample('W').last()</code></td>
+          </tr>
+          <tr>
+            <td>計算列的百分位排名</td>
+            <td><code>df['volume'].rank(pct=True)</code></td>
+          </tr>
+          <tr>
+            <td>兩列元素級比較取較大值</td>
+            <td><code>df[['col1','col2']].max(axis=1)</code></td>
+          </tr>
+          <tr>
+            <td>條件賦值（類似三目運算）</td>
+            <td><code>np.where(condition, val_true, val_false)</code></td>
+          </tr>
+          <tr>
+            <td>查看缺失值數量</td>
+            <td><code>df.isnull().sum()</code></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>常見陷阱</h3>
+    <div class="co warn">
+      <span class="co-ic">⚠</span>
+      <div>
+        <strong>SettingWithCopyWarning</strong> — 對切片賦值會出現此警告，可能導致原 DataFrame 未被修改。<br>
+        解決：用 <code>.loc[condition, 'col'] = value</code> 替代 <code>df[condition]['col'] = value</code>。
+      </div>
+    </div>
+    <div class="co warn">
+      <span class="co-ic">⚠</span>
+      <div>
+        <strong>rolling 的前 N-1 行是 NaN</strong> — <code>.rolling(20)</code> 的前 19 行沒有足夠數據，結果為 NaN。<br>
+        在回測時記得用 <code>df.dropna()</code> 或從第 20 行開始計算信號。
+      </div>
+    </div>
+    <div class="co warn">
+      <span class="co-ic">⚠</span>
+      <div>
+        <strong>未來數據洩漏（Look-ahead bias）</strong> — <code>.rolling()</code> 預設是「往前看」，不會洩漏未來數據。但 <code>shift(-1)</code>（負數）會用到未來數據，在策略信號計算時要小心。
+      </div>
+    </div>
+  </section>
+
+  <!-- ════ PLAN ════ -->
+  <section id="plan">
+    <div class="sec-head">
+      <div class="ph-badge p3">04</div>
+      <div class="sec-title-blk">
+        <h2>兩週學習路徑</h2>
+        <div class="dur">每天 1–2 小時，兩週完成思維切換</div>
+      </div>
+    </div>
+
+    <div class="wf">
+      <div class="wf-step">
+        <div class="wf-n">1</div>
+        <div class="wf-c">
+          <strong>第 1–2 天：建立整體認知</strong>
+          <p>閱讀 <a href="https://pandas.pydata.org/docs/user_guide/10min.html" style="color:var(--blue)">pandas 官方 10 minutes to pandas</a>，重點看 Series / DataFrame 操作、索引、選取。先不求記住所有方法，目標是知道 pandas 能做什麼。</p>
+        </div>
+      </div>
+      <div class="wf-step">
+        <div class="wf-n">2</div>
+        <div class="wf-c">
+          <strong>第 3–4 天：向量化重寫練習</strong>
+          <p>找你以前寫過的任何數據處理代碼（Java / Go / Python for loop），用 pandas 向量化方式重寫。不限場景，目標是把「寫 for loop 的衝動」轉換為「先想有沒有 pandas 方法」的習慣。</p>
+        </div>
+      </div>
+      <div class="wf-step">
+        <div class="wf-n">3</div>
+        <div class="wf-c">
+          <strong>第 5–7 天：用真實 BTC 數據實戰</strong>
+          <p>下載 BTC/USDT 日線數據（ccxt 或直接從 Binance 下載 CSV），<span class="hl">不用任何 for loop</span>，用 pandas 計算：日收益率、20 日移動平均、布林帶、RSI、最大回撤。畫出收益曲線圖。</p>
+        </div>
+      </div>
+      <div class="wf-step">
+        <div class="wf-n">4</div>
+        <div class="wf-c">
+          <strong>第 8–10 天：閱讀核心章節</strong>
+          <p>讀 <em>Python for Data Analysis</em>（Wes McKinney，pandas 作者）第 5–10 章。重點：索引對齊、時間序列操作、groupby 機制。電子版可在作者網站免費閱讀。</p>
+        </div>
+      </div>
+      <div class="wf-step">
+        <div class="wf-n">5</div>
+        <div class="wf-c">
+          <strong>第 11–14 天：完成自我驗收題目</strong>
+          <p>完成下方「自我驗收標準」的三道題，每道題都不允許使用 for loop。完成後，你就達到手冊裡說的「熟悉 pandas 向量化操作」的標準了。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="co info">
+      <span class="co-ic">💡</span>
+      <span><strong>推薦資源：</strong>官方文档 <code>pandas.pydata.org/docs</code>、<em>Python for Data Analysis</em>（wesmckinney.com/book 免費）、Jupyter Notebook 是最好的練習環境（安裝：<code>pip install jupyter</code>）。</span>
+    </div>
+  </section>
+
+  <!-- ════ VERIFY ════ -->
+  <section id="verify">
+    <div class="sec-head">
+      <div class="ph-badge gr">✓</div>
+      <div class="sec-title-blk">
+        <h2>自我驗收標準</h2>
+        <div class="dur">能用「不超過 10 行、零 for loop」完成這三道題，即達標</div>
+      </div>
+    </div>
+
+    <p>這三道題覆蓋了量化工作最常用的數據操作模式。完成後說明你已完成思維切換。</p>
+
+    <div class="card b-p1">
+      <h3 style="margin-top:0;text-transform:none;font-size:18px;">題 1：滾動最大回撤</h3>
+      <p>給定一個 <code>close</code> 列，計算每個時間點「從歷史最高點到當前的最大回撤」，結果存入 <code>df['drawdown']</code>。</p>
+      <div class="crit">
+        <div class="crit-t">驗收條件</div>
+        <ul style="margin:0">
+          <li>不超過 3 行代碼</li>
+          <li>零 for loop，零 if-else</li>
+          <li>用 <code>df['close'].expanding().max()</code> 作為中間步驟</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card b-p2">
+      <h3 style="margin-top:0;text-transform:none;font-size:18px;">題 2：篩選極端收益日</h3>
+      <p>找出所有「當天收益率排名在全部交易日前 10%」的交易日（即收益率最高的 10% 的日子），返回對應的 DataFrame 子集。</p>
+      <div class="crit">
+        <div class="crit-t">驗收條件</div>
+        <ul style="margin:0">
+          <li>不超過 2 行代碼</li>
+          <li>用到布林索引和 <code>.quantile()</code> 或 <code>.rank(pct=True)</code></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card b-p3">
+      <h3 style="margin-top:0;text-transform:none;font-size:18px;">題 3：合併不同頻率數據</h3>
+      <p>你有兩個 DataFrame：<code>df_daily</code>（日線，OHLCV）和 <code>df_weekly</code>（周線，只有 close 和 volume）。把兩者合併到一個 DataFrame，日線數據每行都要包含「當週」的周線數據。</p>
+      <div class="crit">
+        <div class="crit-t">驗收條件</div>
+        <ul style="margin:0">
+          <li>不超過 5 行代碼</li>
+          <li>使用 <code>.resample()</code> 或 <code>.merge_asof()</code></li>
+          <li>結果不包含未來數據（不能用未來的周線數據填充過去的日線）</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="confirm-box" style="margin-top:20px">
+      <div class="ct">完成標準 → 可以進入路線圖 Phase 1</div>
+      <div class="ci">
+        <span class="ci-num">達標後</span>
+        <div>回到主路線圖 <a href="quant_trading_roadmap.html" style="color:var(--blue)">quant_trading_roadmap.html</a>，你已具備 Phase 1 學習所需的 Python 數據操作能力。手冊中「如果已經熟練，這一條跳過」這句話現在適用於你了。</div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+  // Active nav highlight on scroll
+  const sections = document.querySelectorAll('section[id], div[id]');
+  const navItems = document.querySelectorAll('.nav-item');
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const id = entry.target.id;
+        navItems.forEach(item => {
+          item.classList.toggle('active', item.getAttribute('href') === '#' + id);
+        });
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+  sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>
