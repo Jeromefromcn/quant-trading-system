@@ -1,0 +1,11 @@
+pandas
+numpy
+matplotlib
+requests
+python-dotenv
+jupyter
+# Phase 2+
+# ccxt
+# alpaca-trade-api
+# plotly
+# vectorbt
