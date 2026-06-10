@@ -16,6 +16,28 @@
 
 ---
 
+## Pre-Phase 0：Pandas 向量化思維
+
+> ⏱ 1-2 週 · 8 個練習腳本 · 位於 `01_learning/01_pandas/`  
+> 核心原則：零 for loop，零 if-else（信號邏輯除外），用向量化思維操作數據
+
+- [ ] `01_data_structures.py`：Series / DataFrame 基礎，對應 Go 的 `[]float64` 與 `[]map[string]float64`
+- [ ] `02_shift_rolling.py`：位移與滾動操作——`shift` / `rolling` / `expanding` / `ewm` / `diff`，量化最常用
+- [ ] `03_boolean_indexing.py`：篩選與布林索引，pandas 的 if-else 替代方案
+- [ ] `04_groupby_merge_resample.py`：分組、合併、重採樣——多數據源整合的核心工具
+- [ ] `05_apply.py`：`apply` 的正確使用場景——能向量化就向量化，`apply` 是最後手段
+- [ ] `06_quant_examples.py`：量化場景示例——收益率、風險指標、技術指標計算、信號生成
+- [ ] `07_common_patterns.py`：常用模式速查 + 常見陷阱，遇到問題先查這裡
+- [ ] `08_exercises.py`：自我驗收三道題——不超過指定行數、零 for loop、零 if-else
+
+### Pre-Phase 0 完成標準
+
+- [ ] `08_exercises.py` 三道題全部通過，且符合行數限制
+- [ ] 能不查文檔寫出 `shift(1)` 計算昨日收盤、`rolling(20).mean()` 計算 20 日均線、`resample('W').agg({'close': 'last'})` 重採樣
+- [ ] 理解為什麼 `apply(lambda row: ...)` 比向量化慢 10-100 倍
+
+---
+
 ## Phase 0：基礎設施建設
 
 > ⏱ 1-2 天 · 只做一次 · 之後每一天都在這個地基上工作
