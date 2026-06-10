@@ -34,6 +34,10 @@ This is a monorepo covering the full lifecycle from learning to live trading. Di
 | `tests/` | Unit tests for research-layer components | Phase 2+ |
 | `project_manage/` | ROADMAP, DECISIONS, STRATEGY_LOG — not code | Always |
 
+**Pandas convention:**
+
+- Zero `for` loops, zero `if-else` in signal/indicator logic — vectorize everything.
+- `apply(lambda row: ...)` is a last resort; it is 10–100x slower than vectorized operations.
 
 ## Research Workflow
 
