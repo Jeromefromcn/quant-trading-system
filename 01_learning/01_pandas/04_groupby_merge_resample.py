@@ -8,7 +8,9 @@ import numpy as np
 
 # ── 測試數據 ─────────────────────────────────────────────────────────────────
 
-daily_trading_date_index = pd.date_range("2024-01-01", periods=20, freq="B")  # 20 個交易日
+daily_trading_date_index = pd.date_range(
+    "2024-01-01", periods=20, freq="B"
+)  # 20 個交易日
 np.random.seed(42)
 df_daily = pd.DataFrame(
     {
@@ -51,7 +53,9 @@ february_price_dataframe = df_daily[df_daily["month"] == 2].copy()
 
 # 模擬兩個月的數據各自獲取後合併
 combined = pd.concat([january_price_dataframe, february_price_dataframe])
-print(f"Jan 行數: {len(january_price_dataframe)}, Feb 行數: {len(february_price_dataframe)}, 合併後: {len(combined)}")
+print(
+    f"Jan 行數: {len(january_price_dataframe)}, Feb 行數: {len(february_price_dataframe)}, 合併後: {len(combined)}"
+)
 print(combined[["close", "month"]].head())
 
 # ── merge: 按欄位 JOIN 兩個數據源 ────────────────────────────────────────────

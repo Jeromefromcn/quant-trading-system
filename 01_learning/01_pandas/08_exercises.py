@@ -11,19 +11,24 @@ import numpy as np
 
 np.random.seed(42)
 number_of_bars = 300
-date_index = pd.date_range('2023-01-01', periods=number_of_bars, freq='B')
+date_index = pd.date_range("2023-01-01", periods=number_of_bars, freq="B")
 close_price_series = pd.Series(
     30000 * np.exp(np.cumsum(np.random.normal(0.001, 0.022, number_of_bars))),
     index=date_index,
-    name='close'
+    name="close",
 )
-ohlcv_dataframe = pd.DataFrame({
-    'open': close_price_series * (1 + np.random.normal(0, 0.003, number_of_bars)),
-    'high': close_price_series * (1 + np.abs(np.random.normal(0, 0.007, number_of_bars))),
-    'low': close_price_series * (1 - np.abs(np.random.normal(0, 0.007, number_of_bars))),
-    'close': close_price_series,
-    'volume': np.random.randint(500, 5000, number_of_bars).astype(float) * 1e6,
-}, index=date_index)
+ohlcv_dataframe = pd.DataFrame(
+    {
+        "open": close_price_series * (1 + np.random.normal(0, 0.003, number_of_bars)),
+        "high": close_price_series
+        * (1 + np.abs(np.random.normal(0, 0.007, number_of_bars))),
+        "low": close_price_series
+        * (1 - np.abs(np.random.normal(0, 0.007, number_of_bars))),
+        "close": close_price_series,
+        "volume": np.random.randint(500, 5000, number_of_bars).astype(float) * 1e6,
+    },
+    index=date_index,
+)
 
 
 # ════════════════════════════════════════════════════════════════
@@ -41,20 +46,20 @@ print("=" * 55)
 
 # ── 你的答案(3 行以內) ──────────────────────────────────────────────────────
 
-rolling_max = ohlcv_dataframe['close'].expanding().max()
-ohlcv_dataframe['drawdown'] = ohlcv_dataframe['close'] / rolling_max - 1
-maximum_drawdown_value = ohlcv_dataframe['drawdown'].min()
+rolling_max = ohlcv_dataframe["close"].expanding().max()
+ohlcv_dataframe["drawdown"] = ohlcv_dataframe["close"] / rolling_max - 1
+maximum_drawdown_value = ohlcv_dataframe["drawdown"].min()
 
 # ── 驗收輸出 ──────────────────────────────────────────────────────────────────
 
 print(f"最大回撤: {maximum_drawdown_value:.2%}")
 print(f"最大回撤發生日期: {ohlcv_dataframe['drawdown'].idxmin().date()}")
 print(f"\n近期回撤(最後 5 行) :")
-print(ohlcv_dataframe[['close', 'drawdown']].tail(5).round(4))
+print(ohlcv_dataframe[["close", "drawdown"]].tail(5).round(4))
 
 # 驗收條件自檢
-assert ohlcv_dataframe['drawdown'].max() <= 0.001, "回撤應該 <= 0(最高點時為 0) "
-assert ohlcv_dataframe['drawdown'].min() >= -1.0, "回撤不可能低於 -100%"
+assert ohlcv_dataframe["drawdown"].max() <= 0.001, "回撤應該 <= 0(最高點時為 0) "
+assert ohlcv_dataframe["drawdown"].min() >= -1.0, "回撤不可能低於 -100%"
 print("\n✓ 題 1 驗收通過")
 
 
@@ -70,28 +75,36 @@ print("\n" + "=" * 55)
 print("題 2: 篩選極端收益日(前 10%) ")
 print("=" * 55)
 
-ohlcv_dataframe['daily_return'] = ohlcv_dataframe['close'].pct_change()
+ohlcv_dataframe["daily_return"] = ohlcv_dataframe["close"].pct_change()
 
 # ── 方法 A: 用 quantile(2 行) ───────────────────────────────────────────────
 
-top_10_percent_threshold = ohlcv_dataframe['daily_return'].quantile(0.90)
-top_10_percent_return_days_quantile = ohlcv_dataframe[ohlcv_dataframe['daily_return'] >= top_10_percent_threshold]
+top_10_percent_threshold = ohlcv_dataframe["daily_return"].quantile(0.90)
+top_10_percent_return_days_quantile = ohlcv_dataframe[
+    ohlcv_dataframe["daily_return"] >= top_10_percent_threshold
+]
 
 # ── 方法 B: 用 rank(pct=True)(2 行) ────────────────────────────────────────
 
-daily_return_rank_percentile = ohlcv_dataframe['daily_return'].rank(pct=True)
+daily_return_rank_percentile = ohlcv_dataframe["daily_return"].rank(pct=True)
 top_10_percent_return_days_rank = ohlcv_dataframe[daily_return_rank_percentile >= 0.90]
 
 # ── 驗收輸出 ──────────────────────────────────────────────────────────────────
 
-print(f"前 10% 門檻(quantile 法) : {top_10_percent_threshold:.4f} ({top_10_percent_threshold:.2%})")
+print(
+    f"前 10% 門檻(quantile 法) : {top_10_percent_threshold:.4f} ({top_10_percent_threshold:.2%})"
+)
 print(f"符合條件天數: {len(top_10_percent_return_days_quantile)}")
-print(f"佔總天數比例: {len(top_10_percent_return_days_quantile)/len(ohlcv_dataframe):.1%}")
+print(
+    f"佔總天數比例: {len(top_10_percent_return_days_quantile)/len(ohlcv_dataframe):.1%}"
+)
 print(f"\n極端收益日(前 5 條) :")
-print(top_10_percent_return_days_quantile[['close', 'daily_return']].head().round(4))
+print(top_10_percent_return_days_quantile[["close", "daily_return"]].head().round(4))
 
 # 兩種方法結果應接近(rank 包含邊界可能略有差異)
-print(f"\n方法 A 天數: {len(top_10_percent_return_days_quantile)}, 方法 B 天數: {len(top_10_percent_return_days_rank)}")
+print(
+    f"\n方法 A 天數: {len(top_10_percent_return_days_quantile)}, 方法 B 天數: {len(top_10_percent_return_days_rank)}"
+)
 print("\n✓ 題 2 驗收通過")
 
 
@@ -108,24 +121,24 @@ print("\n" + "=" * 55)
 print("題 3: 合併不同頻率數據")
 print("=" * 55)
 
-df_daily = ohlcv_dataframe[['close', 'volume']].copy()
+df_daily = ohlcv_dataframe[["close", "volume"]].copy()
 
 # 構造周線數據
-df_weekly = df_daily.resample('W').agg({'close': 'last', 'volume': 'sum'})
-df_weekly.columns = ['weekly_close_price', 'weekly_total_volume']
+df_weekly = df_daily.resample("W").agg({"close": "last", "volume": "sum"})
+df_weekly.columns = ["weekly_close_price", "weekly_total_volume"]
 
 # ── 答案: merge_asof(5 行以內) ──────────────────────────────────────────────
 
-daily_reset = df_daily.reset_index().rename(columns={'index': 'date'})
-weekly_reset = df_weekly.reset_index().rename(columns={'index': 'date'})
+daily_reset = df_daily.reset_index().rename(columns={"index": "date"})
+weekly_reset = df_weekly.reset_index().rename(columns={"index": "date"})
 
 # direction='backward': 每個日線行往過去找最近的周線(不用未來數據)
 merged = pd.merge_asof(
-    daily_reset.sort_values('date'),
-    weekly_reset.sort_values('date'),
-    on='date',
-    direction='backward'
-).set_index('date')
+    daily_reset.sort_values("date"),
+    weekly_reset.sort_values("date"),
+    on="date",
+    direction="backward",
+).set_index("date")
 
 # ── 驗收輸出 ──────────────────────────────────────────────────────────────────
 
@@ -136,7 +149,9 @@ print(merged.head(10).round(2))
 # 驗收: 結果行數應等於日線行數
 assert len(merged) == len(df_daily), "合併後行數應等於日線行數"
 # 驗收: 周線 weekly_close_price 不應超過當週日線中出現的最新值(無未來洩漏)
-print(f"\n周線 weekly_close_price NaN 數量: {merged['weekly_close_price'].isna().sum()}")
+print(
+    f"\n周線 weekly_close_price NaN 數量: {merged['weekly_close_price'].isna().sum()}"
+)
 print("\n✓ 題 3 驗收通過")
 
 

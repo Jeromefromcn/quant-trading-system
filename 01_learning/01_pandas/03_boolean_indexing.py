@@ -11,7 +11,18 @@ price_dataframe = pd.DataFrame(
     {
         "close": [40000, 41200, 39800, 42000, 43500, 41000, 44200, 45000, 43800, 46000],
         "volume": [1500, 2200, 1800, 3100, 2400, 1200, 3500, 4100, 2800, 3900],
-        "moving_average_5_day": [None, None, None, None, 41300, 41500, 42140, 43140, 43500, 44000],
+        "moving_average_5_day": [
+            None,
+            None,
+            None,
+            None,
+            41300,
+            41500,
+            42140,
+            43140,
+            43500,
+            44000,
+        ],
         "moving_average_20_day": [None] * 10,  # 數據太少, 僅示意
     },
     index=pd.date_range("2024-01-01", periods=10, freq="D"),
@@ -38,11 +49,15 @@ print(f"\n成交量 > 均值({average_volume:.0f}) 的天數:\n{high_volume_days
 
 print("\n=== 多條件篩選 ===")
 # 收盤 > 43000 且成交量 > 2500(放量上漲)
-strong_up_days = price_dataframe[(price_dataframe["close"] > 43000) & (price_dataframe["volume"] > 2500)]
+strong_up_days = price_dataframe[
+    (price_dataframe["close"] > 43000) & (price_dataframe["volume"] > 2500)
+]
 print(f"收盤>43000 且成交量>2500:\n{strong_up_days[['close', 'volume']]}")
 
 # 收盤 < 41000 或成交量 < 1500(弱勢或縮量)
-weak_days = price_dataframe[(price_dataframe["close"] < 41000) | (price_dataframe["volume"] < 1500)]
+weak_days = price_dataframe[
+    (price_dataframe["close"] < 41000) | (price_dataframe["volume"] < 1500)
+]
 print(f"\n收盤<41000 或成交量<1500:\n{weak_days[['close', 'volume']]}")
 
 # ── .loc 條件篩選(推薦寫法) ────────────────────────────────────────────────
@@ -50,13 +65,19 @@ print(f"\n收盤<41000 或成交量<1500:\n{weak_days[['close', 'volume']]}")
 
 print("\n=== .loc 篩選 ===")
 # 取出高價日的 close 和 volume 兩列
-high_price_close_volume = price_dataframe.loc[price_dataframe["close"] > 43000, ["close", "volume"]]
+high_price_close_volume = price_dataframe.loc[
+    price_dataframe["close"] > 43000, ["close", "volume"]
+]
 print(high_price_close_volume)
 
 # 用 .loc 賦值(這是正確寫法, 避免鏈式賦值警告)
 price_dataframe["signal"] = 0
-price_dataframe.loc[price_dataframe["close"] > price_dataframe["close"].shift(1), "signal"] = 1  # 今日 > 昨日 → 上漲
-price_dataframe.loc[price_dataframe["close"] < price_dataframe["close"].shift(1), "signal"] = -1  # 今日 < 昨日 → 下跌
+price_dataframe.loc[
+    price_dataframe["close"] > price_dataframe["close"].shift(1), "signal"
+] = 1  # 今日 > 昨日 → 上漲
+price_dataframe.loc[
+    price_dataframe["close"] < price_dataframe["close"].shift(1), "signal"
+] = -1  # 今日 < 昨日 → 下跌
 print(f"\n漲跌信號:\n{price_dataframe['signal']}")
 
 # ── .iloc 位置索引 ───────────────────────────────────────────────────────────
@@ -70,7 +91,9 @@ print(f"\n第 2 到第 5 行(不含第 5) :\n{price_dataframe.iloc[1:5][['close'
 
 print("\n=== isin 篩選 ===")
 target_dates = ["2024-01-03", "2024-01-07", "2024-01-09"]
-date_filtered_subset = price_dataframe[price_dataframe.index.isin(pd.to_datetime(target_dates))]
+date_filtered_subset = price_dataframe[
+    price_dataframe.index.isin(pd.to_datetime(target_dates))
+]
 print(date_filtered_subset[["close", "volume"]])
 
 # between: 範圍篩選(等效於 >= A and <= B)
@@ -80,7 +103,9 @@ print(f"收盤在 41000~43500 之間:\n{mid_price_days['close']}")
 
 # ── np.where: 條件賦值(類似三目運算 condition ? a : b) ─────────────────────
 print("\n=== np.where 條件賦值 ===")
-price_dataframe["candle"] = np.where(price_dataframe["close"] > price_dataframe["close"].shift(1), "up", "down")
+price_dataframe["candle"] = np.where(
+    price_dataframe["close"] > price_dataframe["close"].shift(1), "up", "down"
+)
 print(price_dataframe["candle"])
 
 # ── 常見陷阱: SettingWithCopyWarning ─────────────────────────────────────────
