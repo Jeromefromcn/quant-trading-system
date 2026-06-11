@@ -8,6 +8,18 @@ Regardless of language used (English or Chinese), always use English punctuation
 
 Example: 這個策略基於趨勢跟蹤原則, 使用 EMA 雙均線作為入場信號. 回測數據顯示樣本外 Sharpe > 1.0.
 
+## Naming Rules
+
+**Variable names: no abbreviations, always use full descriptive names.**
+
+Long names are fine — readability is the standard.
+
+**DataFrame column name strings follow the same rule** — they appear in output and are read by humans.
+
+**Comments: every English abbreviation must include the full form in parentheses immediately after.**
+
+If a comment already contains the full form in parentheses (e.g. `RSI(Relative Strength Index, 14 日)`), no change is needed.
+
 ## Commands
 
 Run a single learning/research script:

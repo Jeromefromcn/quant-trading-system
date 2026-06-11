@@ -10,29 +10,29 @@ import numpy as np
 # ── 共用測試數據 ─────────────────────────────────────────────────────────────
 
 np.random.seed(42)
-n = 300
-idx = pd.date_range('2023-01-01', periods=n, freq='B')
-close = pd.Series(
- 30000 * np.exp(np.cumsum(np.random.normal(0.001, 0.022, n))),
- index=idx,
- name='close'
+number_of_bars = 300
+date_index = pd.date_range('2023-01-01', periods=number_of_bars, freq='B')
+close_price_series = pd.Series(
+    30000 * np.exp(np.cumsum(np.random.normal(0.001, 0.022, number_of_bars))),
+    index=date_index,
+    name='close'
 )
-df = pd.DataFrame({
- 'open': close * (1 + np.random.normal(0, 0.003, n)),
- 'high': close * (1 + np.abs(np.random.normal(0, 0.007, n))),
- 'low': close * (1 - np.abs(np.random.normal(0, 0.007, n))),
- 'close': close,
- 'volume': np.random.randint(500, 5000, n).astype(float) * 1e6,
-}, index=idx)
+ohlcv_dataframe = pd.DataFrame({
+    'open': close_price_series * (1 + np.random.normal(0, 0.003, number_of_bars)),
+    'high': close_price_series * (1 + np.abs(np.random.normal(0, 0.007, number_of_bars))),
+    'low': close_price_series * (1 - np.abs(np.random.normal(0, 0.007, number_of_bars))),
+    'close': close_price_series,
+    'volume': np.random.randint(500, 5000, number_of_bars).astype(float) * 1e6,
+}, index=date_index)
 
 
 # ════════════════════════════════════════════════════════════════
 # 題 1: 滾動最大回撤
 # 給定 close 列, 計算每個時間點"從歷史最高點到當前的最大回撤"
-# 存入 df['drawdown']
+# 存入 ohlcv_dataframe['drawdown']
 #
 # 要求: 不超過 3 行, 零 for loop, 零 if-else
-# 提示: 用 df['close'].expanding().max() 作為中間步驟
+# 提示: 用 ohlcv_dataframe['close'].expanding().max() 作為中間步驟
 # ════════════════════════════════════════════════════════════════
 
 print("=" * 55)
@@ -41,20 +41,20 @@ print("=" * 55)
 
 # ── 你的答案(3 行以內) ──────────────────────────────────────────────────────
 
-rolling_max = df['close'].expanding().max()
-df['drawdown'] = df['close'] / rolling_max - 1
-max_dd = df['drawdown'].min()
+rolling_max = ohlcv_dataframe['close'].expanding().max()
+ohlcv_dataframe['drawdown'] = ohlcv_dataframe['close'] / rolling_max - 1
+maximum_drawdown_value = ohlcv_dataframe['drawdown'].min()
 
 # ── 驗收輸出 ──────────────────────────────────────────────────────────────────
 
-print(f"最大回撤: {max_dd:.2%}")
-print(f"最大回撤發生日期: {df['drawdown'].idxmin().date()}")
+print(f"最大回撤: {maximum_drawdown_value:.2%}")
+print(f"最大回撤發生日期: {ohlcv_dataframe['drawdown'].idxmin().date()}")
 print(f"\n近期回撤(最後 5 行) :")
-print(df[['close', 'drawdown']].tail(5).round(4))
+print(ohlcv_dataframe[['close', 'drawdown']].tail(5).round(4))
 
 # 驗收條件自檢
-assert df['drawdown'].max() <= 0.001, "回撤應該 <= 0(最高點時為 0) "
-assert df['drawdown'].min() >= -1.0, "回撤不可能低於 -100%"
+assert ohlcv_dataframe['drawdown'].max() <= 0.001, "回撤應該 <= 0(最高點時為 0) "
+assert ohlcv_dataframe['drawdown'].min() >= -1.0, "回撤不可能低於 -100%"
 print("\n✓ 題 1 驗收通過")
 
 
@@ -70,34 +70,34 @@ print("\n" + "=" * 55)
 print("題 2: 篩選極端收益日(前 10%) ")
 print("=" * 55)
 
-df['daily_return'] = df['close'].pct_change()
+ohlcv_dataframe['daily_return'] = ohlcv_dataframe['close'].pct_change()
 
 # ── 方法 A: 用 quantile(2 行) ───────────────────────────────────────────────
 
-threshold = df['daily_return'].quantile(0.90)
-top10_days_A = df[df['daily_return'] >= threshold]
+top_10_percent_threshold = ohlcv_dataframe['daily_return'].quantile(0.90)
+top_10_percent_return_days_quantile = ohlcv_dataframe[ohlcv_dataframe['daily_return'] >= top_10_percent_threshold]
 
 # ── 方法 B: 用 rank(pct=True)(2 行) ────────────────────────────────────────
 
-rank_pct = df['daily_return'].rank(pct=True)
-top10_days_B = df[rank_pct >= 0.90]
+daily_return_rank_percentile = ohlcv_dataframe['daily_return'].rank(pct=True)
+top_10_percent_return_days_rank = ohlcv_dataframe[daily_return_rank_percentile >= 0.90]
 
 # ── 驗收輸出 ──────────────────────────────────────────────────────────────────
 
-print(f"前 10% 門檻(quantile 法) : {threshold:.4f} ({threshold:.2%})")
-print(f"符合條件天數: {len(top10_days_A)}")
-print(f"佔總天數比例: {len(top10_days_A)/len(df):.1%}")
+print(f"前 10% 門檻(quantile 法) : {top_10_percent_threshold:.4f} ({top_10_percent_threshold:.2%})")
+print(f"符合條件天數: {len(top_10_percent_return_days_quantile)}")
+print(f"佔總天數比例: {len(top_10_percent_return_days_quantile)/len(ohlcv_dataframe):.1%}")
 print(f"\n極端收益日(前 5 條) :")
-print(top10_days_A[['close', 'daily_return']].head().round(4))
+print(top_10_percent_return_days_quantile[['close', 'daily_return']].head().round(4))
 
 # 兩種方法結果應接近(rank 包含邊界可能略有差異)
-print(f"\n方法 A 天數: {len(top10_days_A)}, 方法 B 天數: {len(top10_days_B)}")
+print(f"\n方法 A 天數: {len(top_10_percent_return_days_quantile)}, 方法 B 天數: {len(top_10_percent_return_days_rank)}")
 print("\n✓ 題 2 驗收通過")
 
 
 # ════════════════════════════════════════════════════════════════
 # 題 3: 合併不同頻率數據
-# df_daily(日線 OHLCV) 和 df_weekly(周線 close + volume)
+# df_daily(日線 OHLCV(Open, High, Low, Close, Volume)) 和 df_weekly(周線 close + volume)
 # 把兩者合併到一個 DataFrame, 日線數據每行都要包含"當週" 的周線數據
 #
 # 要求: 不超過 5 行, 使用 resample() 或 merge_asof()
@@ -108,11 +108,11 @@ print("\n" + "=" * 55)
 print("題 3: 合併不同頻率數據")
 print("=" * 55)
 
-df_daily = df[['close', 'volume']].copy()
+df_daily = ohlcv_dataframe[['close', 'volume']].copy()
 
 # 構造周線數據
 df_weekly = df_daily.resample('W').agg({'close': 'last', 'volume': 'sum'})
-df_weekly.columns = ['w_close', 'w_volume']
+df_weekly.columns = ['weekly_close_price', 'weekly_total_volume']
 
 # ── 答案: merge_asof(5 行以內) ──────────────────────────────────────────────
 
@@ -121,10 +121,10 @@ weekly_reset = df_weekly.reset_index().rename(columns={'index': 'date'})
 
 # direction='backward': 每個日線行往過去找最近的周線(不用未來數據)
 merged = pd.merge_asof(
- daily_reset.sort_values('date'),
- weekly_reset.sort_values('date'),
- on='date',
- direction='backward'
+    daily_reset.sort_values('date'),
+    weekly_reset.sort_values('date'),
+    on='date',
+    direction='backward'
 ).set_index('date')
 
 # ── 驗收輸出 ──────────────────────────────────────────────────────────────────
@@ -135,8 +135,8 @@ print(merged.head(10).round(2))
 
 # 驗收: 結果行數應等於日線行數
 assert len(merged) == len(df_daily), "合併後行數應等於日線行數"
-# 驗收: 周線 close 不應超過當週日線中出現的最新值(無未來洩漏)
-print(f"\n周線 w_close NaN 數量: {merged['w_close'].isna().sum()}")
+# 驗收: 周線 weekly_close_price 不應超過當週日線中出現的最新值(無未來洩漏)
+print(f"\n周線 weekly_close_price NaN 數量: {merged['weekly_close_price'].isna().sum()}")
 print("\n✓ 題 3 驗收通過")
 
 
@@ -148,4 +148,4 @@ print("\n" + "=" * 55)
 print("三道題全部通過 ✓")
 print("=" * 55)
 print("你已完成思維切換, 可進入路線圖 Phase 1")
-print("下一步: 用真實 BTC/USDT 數據重跑 06_quant_examples.py")
+print("下一步: 用真實 BTC(Bitcoin)/USDT 數據重跑 06_quant_examples.py")
