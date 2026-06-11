@@ -11,18 +11,6 @@ price_dataframe = pd.DataFrame(
     {
         "close": [40000, 41200, 39800, 42000, 43500, 41000, 44200, 45000, 43800, 46000],
         "volume": [1500, 2200, 1800, 3100, 2400, 1200, 3500, 4100, 2800, 3900],
-        "moving_average_5_day": [
-            None,
-            None,
-            None,
-            None,
-            41300,
-            41500,
-            42140,
-            43140,
-            43500,
-            44000,
-        ],
         "moving_average_20_day": [None] * 10,  # 數據太少, 僅示意
     },
     index=pd.date_range("2024-01-01", periods=10, freq="D"),
