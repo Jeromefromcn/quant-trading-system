@@ -22,8 +22,8 @@
 > 核心原則: 零 for loop, 零 if-else(信號邏輯除外) , 用向量化思維操作數據
 
 - [x] `01_data_structures.py`: Series / DataFrame 基礎, 對應 Go 的 `[]float64` 與 `[]map[string]float64`
-- [ ] `02_shift_rolling.py`: 位移與滾動操作 — `shift` / `rolling` / `expanding` / `ewm` / `diff`, 量化最常用
-- [ ] `03_boolean_indexing.py`: 篩選與布林索引, pandas 的 if-else 替代方案
+- [x] `02_shift_rolling.py`: 位移與滾動操作 — `shift` / `rolling` / `expanding` / `ewm` / `diff`, 量化最常用
+- [x] `03_boolean_indexing.py`: 篩選與布林索引, pandas 的 if-else 替代方案
 - [ ] `04_groupby_merge_resample.py`: 分組, 合併, 重採樣 — 多數據源整合的核心工具
 - [ ] `05_apply.py`: `apply` 的正確使用場景 — 能向量化就向量化, `apply` 是最後手段
 - [ ] `06_quant_examples.py`: 量化場景示例 — 收益率, 風險指標, 技術指標計算, 信號生成
