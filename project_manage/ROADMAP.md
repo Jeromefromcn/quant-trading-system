@@ -24,17 +24,17 @@
 - [x] `01_data_structures.py`: Series / DataFrame 基礎, 對應 Go 的 `[]float64` 與 `[]map[string]float64`
 - [x] `02_shift_rolling.py`: 位移與滾動操作 — `shift` / `rolling` / `expanding` / `ewm` / `diff`, 量化最常用
 - [x] `03_boolean_indexing.py`: 篩選與布林索引, pandas 的 if-else 替代方案
-- [ ] `04_groupby_merge_resample.py`: 分組, 合併, 重採樣 — 多數據源整合的核心工具
-- [ ] `05_apply.py`: `apply` 的正確使用場景 — 能向量化就向量化, `apply` 是最後手段
-- [ ] `06_quant_examples.py`: 量化場景示例 — 收益率, 風險指標, 技術指標計算, 信號生成
-- [ ] `07_common_patterns.py`: 常用模式速查 + 常見陷阱, 遇到問題先查這裡
-- [ ] `08_exercises.py`: 自我驗收三道題 — 不超過指定行數, 零 for loop, 零 if-else
+- [x] `04_groupby_merge_resample.py`: 分組, 合併, 重採樣 — 多數據源整合的核心工具
+- [x] `05_apply.py`: `apply` 的正確使用場景 — 能向量化就向量化, `apply` 是最後手段
+- [x] `06_quant_examples.py`: 量化場景示例 — 收益率, 風險指標, 技術指標計算, 信號生成
+- [x] `07_common_patterns.py`: 常用模式速查 + 常見陷阱, 遇到問題先查這裡
+- [x] `08_exercises.py`: 自我驗收三道題 — 不超過指定行數, 零 for loop, 零 if-else
 
 ### Pre-Phase 0 完成標準
 
-- [ ] `08_exercises.py` 三道題全部通過, 且符合行數限制
-- [ ] 能不查文檔寫出 `shift(1)` 計算昨日收盤, `rolling(20).mean()` 計算 20 日均線, `resample('W').agg({'close': 'last'})` 重採樣
-- [ ] 理解為什麼 `apply(lambda row: ...)` 比向量化慢 10-100 倍
+- [x] `08_exercises.py` 三道題全部通過, 且符合行數限制
+- [x] 能不查文檔寫出 `shift(1)` 計算昨日收盤, `rolling(20).mean()` 計算 20 日均線, `resample('W').agg({'close': 'last'})` 重採樣
+- [x] 理解為什麼 `apply(lambda row: ...)` 比向量化慢 10-100 倍
 
 ---
 
@@ -44,21 +44,21 @@
 
 ### 任務(按順序執行)
 
-- [ ] **1. 建立 GitHub Private Repo**: 名字建議 `quant-trading`, 設為 Private, 初始化時勾選 Add README
-- [ ] **2. 建立 Python 環境**: 用 `pyenv + virtualenv` 或 `conda`, Python 3.11+, 安裝 `pandas numpy matplotlib requests python-dotenv jupyter`
-- [ ] **3. 生成倉庫目錄結構**: 讓 Claude Code 生成 bash 腳本, 創建所有目錄, 每個目錄放空 README.md, 生成 `.gitignore` 和 `.env.example`
-- [ ] **4a. 申請 Binance Testnet API Key**: 訪問 `testnet.binance.vision`, 無需 KYC, 5 分鐘完成, 填入本地 `.env`
-- [ ] **4b. 申請 Alpaca Paper Trading API Key**: 訪問 `alpaca.markets`, 免費帳戶, 拿到 Paper API Key, 填入本地 `.env`
-- [ ] **4c. 確認 `.env` 已在 `.gitignore` 第一行**, 且 `.env.example` 只放佔位符
-- [ ] **5. 第一個 Git Commit**: `git commit -m "init: project structure, gitignore, env template"` 並推送到 GitHub
+- [x] **1. 建立 GitHub Private Repo**: 名字建議 `quant-trading`, 設為 Private, 初始化時勾選 Add README
+- [x] **2. 建立 Python 環境**: 用 `pyenv + virtualenv` 或 `conda`, Python 3.11+, 安裝 `pandas numpy matplotlib requests python-dotenv jupyter`
+- [x] **3. 生成倉庫目錄結構**: 讓 Claude Code 生成 bash 腳本, 創建所有目錄, 每個目錄放空 README.md, 生成 `.gitignore` 和 `.env.example`
+- [x] **4a. 申請 Binance Testnet API Key**: 訪問 `testnet.binance.vision`, 無需 KYC, 5 分鐘完成, 填入本地 `.env`
+- [x] **4b. 申請 Alpaca Paper Trading API Key**: 訪問 `alpaca.markets`, 免費帳戶, 拿到 Paper API Key, 填入本地 `.env`
+- [x] **4c. 確認 `.env` 已在 `.gitignore` 第一行**, 且 `.env.example` 只放佔位符
+- [x] **5. 第一個 Git Commit**: `git commit -m "init: project structure, gitignore, env template"` 並推送到 GitHub
 
 ### Phase 0 完成標準
 
-- [ ] Repo 建立完成, 目錄結構齊全, 推送到 GitHub
-- [ ] `.env` 已在 `.gitignore` 中, 且已填好 API Key
-- [ ] 用測試腳本確認 Binance Testnet API 可以成功調用
-- [ ] 用測試腳本確認 Alpaca Paper API 可以成功調用
-- [ ] 第一個 commit 已推送
+- [x] Repo 建立完成, 目錄結構齊全, 推送到 GitHub
+- [x] `.env` 已在 `.gitignore` 中, 且已填好 API Key
+- [x] 用測試腳本確認 Binance Testnet API 可以成功調用
+- [x] 用測試腳本確認 Alpaca Paper API 可以成功調用
+- [x] 第一個 commit 已推送
 
 ---
 
