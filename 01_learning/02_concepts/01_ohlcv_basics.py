@@ -19,9 +19,18 @@ raw_klines_response = requests.get(
 
 # Binance 回傳的每根 K 線是沒有欄位名的陣列, 按官方文件順序對應成有意義的欄位名
 kline_columns = [
-    "open_time", "open", "high", "low", "close", "volume", "close_time",
-    "quote_volume", "trade_count", "taker_buy_base_volume",
-    "taker_buy_quote_volume", "ignore",
+    "open_time",
+    "open",
+    "high",
+    "low",
+    "close",
+    "volume",
+    "close_time",
+    "quote_volume",
+    "trade_count",
+    "taker_buy_base_volume",
+    "taker_buy_quote_volume",
+    "ignore",
 ]
 daily_kline_dataframe = pd.DataFrame(raw_klines_response, columns=kline_columns)
 # open_time 原始是毫秒時間戳, 轉成日期才能看懂這根 K 線發生在哪一天
@@ -49,11 +58,15 @@ ohlcv_dataframe.to_csv(
 # 用兩個子圖呈現一根 K 線真正在說的兩件事: 市場認可的價格, 和有多少人在交易
 figure, (price_axes, volume_axes) = plt.subplots(2, 1, figsize=(12, 6), sharex=True)
 # 收盤價走勢線: 代表每天市場最終認可的價格, 是最常被引用的「那個價格」
-price_axes.plot(ohlcv_dataframe["open_time"], ohlcv_dataframe["close"], color="steelblue")
+price_axes.plot(
+    ohlcv_dataframe["open_time"], ohlcv_dataframe["close"], color="steelblue"
+)
 price_axes.set_ylabel("收盤價(美元)")
 price_axes.set_title("BTC/USDT 日線收盤價與成交量(近 180 天)")
 # 成交量柱狀圖: 代表當天交易的活躍程度, 量越大代表越多人認同這個價格區間
-volume_axes.bar(ohlcv_dataframe["open_time"], ohlcv_dataframe["volume"], color="lightgray")
+volume_axes.bar(
+    ohlcv_dataframe["open_time"], ohlcv_dataframe["volume"], color="lightgray"
+)
 volume_axes.set_ylabel("成交量(BTC)")
 figure.tight_layout()
 plt.show()
