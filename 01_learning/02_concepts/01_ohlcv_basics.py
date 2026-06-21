@@ -9,6 +9,10 @@ import requests
 import pandas as pd
 import matplotlib.pyplot as plt
 
+# 設定中文字體, 避免圖表上的中文文字顯示成方框
+plt.rcParams["font.sans-serif"] = ["Noto Sans CJK TC", "WenQuanYi Zen Hei"]
+plt.rcParams["axes.unicode_minus"] = False
+
 # Binance 公開行情端點不需要 API Key, 任何人都能查到所有人都看得到的歷史成交價格
 binance_klines_endpoint = "https://api.binance.com/api/v3/klines"
 # 抓最近 180 天日線, 足夠看到一段完整的漲跌週期, 不會只看到單邊行情
@@ -69,5 +73,8 @@ volume_axes.bar(
 )
 volume_axes.set_ylabel("成交量(BTC)")
 figure.tight_layout()
+images_output_directory_path = os.path.join(os.path.dirname(__file__), ".images")
+os.makedirs(images_output_directory_path, exist_ok=True)
+figure.savefig(os.path.join(images_output_directory_path, "01_ohlcv_basics.png"))
 plt.show()
 print(f"已抓取 {len(ohlcv_dataframe)} 天 BTC/USDT 日線數據, 並存到本地 CSV")

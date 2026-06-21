@@ -7,6 +7,10 @@ import os
 import pandas as pd
 import matplotlib.pyplot as plt
 
+# 設定中文字體, 避免圖表上的中文文字顯示成方框
+plt.rcParams["font.sans-serif"] = ["Noto Sans CJK TC", "WenQuanYi Zen Hei"]
+plt.rcParams["axes.unicode_minus"] = False
+
 local_data_file_path = os.path.join(
     os.path.dirname(__file__), "data", "btc_usdt_daily.csv"
 )
@@ -42,6 +46,9 @@ atr_axes.plot(
 )
 atr_axes.set_ylabel("ATR(美元)")
 figure.tight_layout()
+images_output_directory_path = os.path.join(os.path.dirname(__file__), ".images")
+os.makedirs(images_output_directory_path, exist_ok=True)
+figure.savefig(os.path.join(images_output_directory_path, "03_atr.png"))
 plt.show()
 
 # 驗證 ATR 確實能反映波動程度: 把每天漲跌幅的標準差(常見的波動率定義) 跟 ATR 走勢的相關係數算出來

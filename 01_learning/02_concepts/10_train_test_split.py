@@ -9,6 +9,10 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
+# 設定中文字體, 避免圖表上的中文文字顯示成方框
+plt.rcParams["font.sans-serif"] = ["Noto Sans CJK TC", "WenQuanYi Zen Hei"]
+plt.rcParams["axes.unicode_minus"] = False
+
 local_data_file_path = os.path.join(
     os.path.dirname(__file__), "data", "btc_usdt_daily.csv"
 )
@@ -113,6 +117,9 @@ fold_axes.axhline(0, color="gray", linewidth=0.8)
 fold_axes.set_ylabel("樣本外 Sharpe Ratio")
 fold_axes.set_title("Walk-Forward 驗證: 每段測試前都只用該段之前的數據重新選參數")
 figure.tight_layout()
+images_output_directory_path = os.path.join(os.path.dirname(__file__), ".images")
+os.makedirs(images_output_directory_path, exist_ok=True)
+figure.savefig(os.path.join(images_output_directory_path, "10_train_test_split.png"))
 plt.show()
 
 print("Walk-Forward 各段樣本外表現:")

@@ -9,6 +9,10 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
+# 設定中文字體, 避免圖表上的中文文字顯示成方框
+plt.rcParams["font.sans-serif"] = ["Noto Sans CJK TC", "WenQuanYi Zen Hei"]
+plt.rcParams["axes.unicode_minus"] = False
+
 local_data_file_path = os.path.join(
     os.path.dirname(__file__), "data", "btc_usdt_daily.csv"
 )
@@ -56,6 +60,9 @@ drawdown_axes.fill_between(
 )
 drawdown_axes.set_ylabel("回撤幅度")
 figure.tight_layout()
+images_output_directory_path = os.path.join(os.path.dirname(__file__), ".images")
+os.makedirs(images_output_directory_path, exist_ok=True)
+figure.savefig(os.path.join(images_output_directory_path, "04_sharpe_drawdown.png"))
 plt.show()
 
 print(f"年化 Sharpe Ratio: {annualized_sharpe_ratio:.2f}")

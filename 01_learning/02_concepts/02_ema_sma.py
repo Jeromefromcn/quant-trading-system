@@ -7,6 +7,10 @@ import os
 import pandas as pd
 import matplotlib.pyplot as plt
 
+# 設定中文字體, 避免圖表上的中文文字顯示成方框
+plt.rcParams["font.sans-serif"] = ["Noto Sans CJK TC", "WenQuanYi Zen Hei"]
+plt.rcParams["axes.unicode_minus"] = False
+
 # 讀取 01_ohlcv_basics.py 已經抓好並存到本地的 K 線數據, 不重複打 API
 local_data_file_path = os.path.join(
     os.path.dirname(__file__), "data", "btc_usdt_daily.csv"
@@ -59,6 +63,9 @@ price_axes.set_ylabel("價格(美元)")
 price_axes.set_title("BTC/USDT 收盤價: EMA 與 SMA 比較")
 price_axes.legend()
 figure.tight_layout()
+images_output_directory_path = os.path.join(os.path.dirname(__file__), ".images")
+os.makedirs(images_output_directory_path, exist_ok=True)
+figure.savefig(os.path.join(images_output_directory_path, "02_ema_sma.png"))
 plt.show()
 
 # 量化驗證 EMA 比 SMA 更敏感: 比較均線與當天收盤價的偏離程度, 偏離越小代表跟得越緊, 反應越快

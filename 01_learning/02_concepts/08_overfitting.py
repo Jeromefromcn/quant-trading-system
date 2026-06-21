@@ -9,6 +9,10 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
+# 設定中文字體, 避免圖表上的中文文字顯示成方框
+plt.rcParams["font.sans-serif"] = ["Noto Sans CJK TC", "WenQuanYi Zen Hei"]
+plt.rcParams["axes.unicode_minus"] = False
+
 local_data_file_path = os.path.join(
     os.path.dirname(__file__), "data", "btc_usdt_daily.csv"
 )
@@ -85,6 +89,9 @@ heatmap_axes.set_ylabel("慢線天數")
 heatmap_axes.set_title("不同 EMA 參數組合的全樣本 Sharpe Ratio(顏色越綠越高)")
 figure.colorbar(heatmap_image, label="Sharpe Ratio")
 figure.tight_layout()
+images_output_directory_path = os.path.join(os.path.dirname(__file__), ".images")
+os.makedirs(images_output_directory_path, exist_ok=True)
+figure.savefig(os.path.join(images_output_directory_path, "08_overfitting.png"))
 plt.show()
 
 # 把全樣本選出來的「最佳」參數, 拆開放到前 70% 和後 30% 分別重新計算 Sharpe,
