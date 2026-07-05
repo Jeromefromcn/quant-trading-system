@@ -1,0 +1,41 @@
+{
+  "experiment_name": "exp_005_tight_trailing",
+  "dataset": "btc_usdt_1d.csv",
+  "strategy": "trend_following",
+  "strategy_parameters": {
+    "fast_span": 12,
+    "slow_span": 26,
+    "adx_period": 14,
+    "adx_threshold": 25.0
+  },
+  "engine_parameters": {
+    "initial_capital": 10000.0,
+    "risk_per_trade_percentage": 0.01,
+    "atr_stop_multiplier": 2.0,
+    "atr_period": 14,
+    "fee_rate": 0.001,
+    "slippage_rate": 0.0005,
+    "max_position_fraction": 1.0,
+    "trading_days_per_year": 365,
+    "trailing_stop_atr_multiplier": 1.5
+  },
+  "in_sample_ratio": 0.7,
+  "in_sample_metrics": {
+    "total_return": 0.15291612802391819,
+    "compound_annual_growth_rate": 0.02314370586004233,
+    "annualized_sharpe_ratio": 0.7096149958706037,
+    "maximum_drawdown": -0.03899373694146536,
+    "number_of_trades": 28,
+    "win_rate": 0.4642857142857143,
+    "profit_factor": 2.586122959566127
+  },
+  "out_of_sample_metrics": {
+    "total_return": 0.05695102384031636,
+    "compound_annual_growth_rate": 0.020973335016166272,
+    "annualized_sharpe_ratio": 0.7142393439168762,
+    "maximum_drawdown": -0.0452057901142821,
+    "number_of_trades": 10,
+    "win_rate": 0.7,
+    "profit_factor": 2.705966884449887
+  }
+}
