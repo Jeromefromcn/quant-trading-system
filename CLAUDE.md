@@ -1,28 +1,25 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for Claude Code in this repo.
 
-## Writing Rules
+## Meta
 
-Regardless of language used (English or Chinese), always use English punctuation marks (`.`, `,`, `!`, `?`, `:`, `;`, `()`). When writing Chinese text with English punctuation, follow each punctuation mark with a space.
+Everything written to CLAUDE.md must be short and direct.
 
-Example: 這個策略基於趨勢跟蹤原則, 使用 EMA 雙均線作為入場信號. 回測數據顯示樣本外 Sharpe > 1.0.
+## Writing
 
-## Naming Rules
+- English punctuation only (`.`, `,`, `!`, `?`, `:`, `;`, `()`), even in Chinese.
+- In Chinese, put a space after each punctuation mark.
 
-**Variable names: no abbreviations, always use full descriptive names.**
+Example: 這個策略基於趨勢跟蹤原則, 使用 EMA 雙均線作為入場信號. 樣本外 Sharpe > 1.0.
 
-Long names are fine — readability is the standard.
+## Naming
 
-**DataFrame column name strings follow the same rule** — they appear in output and are read by humans.
-
-**Comments: every English abbreviation must include the full form in parentheses immediately after.**
-
-If a comment already contains the full form in parentheses (e.g. `RSI(Relative Strength Index, 14 日)`), no change is needed.
+- No abbreviations in variable names — full descriptive names. Readability over brevity.
+- DataFrame column names follow the same rule (they appear in output).
+- Every abbreviation in a comment needs its full form in parentheses on first use. Skip if already present.
 
 ## Commands
-
-Run a single learning/research script:
 
 Install dependencies:
 
@@ -32,27 +29,29 @@ pip install -r requirements.txt
 
 ## Architecture
 
-This is a monorepo covering the full lifecycle from learning to live trading. Directories activate sequentially by phase — do not build ahead of the current phase.
-
-**Phase progression:**
+Monorepo, learning → live. Directories activate by phase in order — never build ahead.
 
 | Directory | Purpose | Active Phase |
 |---|---|---|
-| `01_learning/` | Concept scripts — run and study directly, not imported | Pre-Phase 0, Phase 1 |
-| `02_data/` | Market data fetchers (Binance Testnet, Alpaca Paper) | Phase 2+ |
-| `03_research/` | Indicator library, strategy base class, backtest engine | Phase 2 |
-| `04_paper_trading/` | 4-agent automated paper trading system | Phase 3 |
-| `05_live/` | Live trading — **do not touch until Phase 3 is complete** | Phase 4 |
-| `tests/` | Unit tests for research-layer components | Phase 2+ |
+| `01_learning/` | Concept scripts — run and study, not imported | Pre-0, 1 |
+| `02_data/` | Data fetchers (Binance Testnet, Alpaca Paper) | 2+ |
+| `03_research/` | Indicators, strategy base class, backtest engine | 2 |
+| `04_paper_trading/` | 4-agent paper trading system | 3 |
+| `05_live/` | Live trading — do not touch until Phase 3 is complete | 4 |
+| `tests/` | Unit tests for research layer | 2+ |
 | `project_manage/` | ROADMAP, DECISIONS, STRATEGY_LOG — not code | Always |
 
-**Pandas convention:**
+Pandas:
 
-- Zero `for` loops, zero `if-else` in signal/indicator logic — vectorize everything.
-- `apply(lambda row: ...)` is a last resort; it is 10–100x slower than vectorized operations.
+- No `for` loops or `if-else` in signal/indicator logic — vectorize.
+- `apply(lambda row: ...)` is last resort (10–100x slower).
+
+## Git
+
+- After any change, commit and push to the current branch. No confirmation needed.
 
 ## Research Workflow
 
-Every strategy experiment goes in `project_manage/STRATEGY_LOG.md` — write the hypothesis before touching code, record the conclusion after (failed experiments are equally valuable). Commit format: `research: exp_XXX [strategy name] - OOS Sharpe=X.X MaxDD=-XX%`.
-
-Learning script commit format: `learn: [concept] - [one-line key insight]`.
+- Log every experiment in `project_manage/STRATEGY_LOG.md`: hypothesis before code, conclusion after. Failed runs count.
+- Research commit: `research: exp_XXX [strategy] - OOS Sharpe=X.X MaxDD=-XX%`
+- Learning commit: `learn: [concept] - [one-line insight]`

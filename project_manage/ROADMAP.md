@@ -71,32 +71,32 @@
 
 每個腳本完成後, 需走完 5 步工作流(見下方) :
 
-- [ ] `01_ohlcv_basics.py`: K 線是什麼, 從 Binance 拿到第一份真實數據並存本地
-- [ ] `02_ema_sma.py`: 均線計算, 可視化, 業務含義
-- [ ] `03_atr.py`: 波動率測量, 止損的基礎
+- [x] `01_ohlcv_basics.py`: K 線是什麼, 從 Binance 拿到第一份真實數據並存本地
+- [x] `02_ema_sma.py`: 均線計算, 可視化, 業務含義
+- [x] `03_atr.py`: 波動率測量, 止損的基礎
 
 **週 1 能力驗證**: 能理解 K 線含義, 畫出均線, 計算波動率
 
 ### 週 2: 策略評估, 倉位管理
 
-- [ ] `04_sharpe_drawdown.py`: 策略評估的兩個核心指標
-- [ ] `05_position_sizing.py`: 固定風險倉位法 — 每筆虧多少
+- [x] `04_sharpe_drawdown.py`: 策略評估的兩個核心指標
+- [x] `05_position_sizing.py`: 固定風險倉位法 — 每筆虧多少
 
 **週 2 能力驗證**: 能計算 Sharpe 和最大回撤; 能用 ATR 計算每筆應買多少以控制風險
 
 ### 週 3: 第一個完整回測
 
-- [ ] `06_simple_backtest.py`: 第一個完整回測, 端到端跑通
-- [ ] `07_backtest_metrics.py`: 計算所有績效指標
+- [x] `06_simple_backtest.py`: 第一個完整回測, 端到端跑通
+- [x] `07_backtest_metrics.py`: 計算所有績效指標
 - [ ] **手動核對至少 10 筆交易**的計算是否正確
 
 **週 3 能力驗證**: 能跑出第一個完整回測並手動核對
 
 ### 週 4: 回測陷阱識別
 
-- [ ] `08_overfitting.py`: 過擬合是什麼, 怎麼識別
-- [ ] `09_lookahead_bias.py`: 前視偏差演示與預防(重點: 信號用前一天收盤價, 不是當天)
-- [ ] `10_train_test_split.py`: 樣本內外劃分, walk-forward 驗證
+- [x] `08_overfitting.py`: 過擬合是什麼, 怎麼識別
+- [x] `09_lookahead_bias.py`: 前視偏差演示與預防(重點: 信號用前一天收盤價, 不是當天)
+- [x] `10_train_test_split.py`: 樣本內外劃分, walk-forward 驗證
 
 **週 4 能力驗證**: 能識別回測是否有過擬合或前視偏差, 能正確劃分樣本內外數據
 
@@ -123,12 +123,12 @@
 
 ### 第一週: 搭建回測引擎(`03_research/backtest/engine.py`)
 
-- [ ] **手續費模擬**: Binance Taker 0.1%, Alpaca 加 0.03% 估算 bid-ask spread
-- [ ] **滑點模擬**: 每筆交易加 0.05% 保守估算
-- [ ] **固定風險倉位**: 每筆風險 = 賬戶 × 1-2%, 止損距離 = 2×ATR, 計算買入數量
-- [ ] **樣本劃分**: 前 70% 樣本內(調參) , 後 30% 樣本外(驗證) , 樣本外數字才算數
-- [ ] **標準化輸出**: JSON 格式績效報告 + 淨值曲線圖
-- [ ] **手動核對**: 新引擎完成後至少核對 10 筆交易的計算正確性
+- [x] **手續費模擬**: Binance Taker 0.1%, Alpaca 加 0.03% 估算 bid-ask spread(引擎 fee_rate 參數, 預設 0.1%)
+- [x] **滑點模擬**: 每筆交易加 0.05% 保守估算(引擎 slippage_rate 參數, 預設 0.05%)
+- [x] **固定風險倉位**: 每筆風險 = 賬戶 × 1-2%, 止損距離 = 2×ATR, 計算買入數量(compute_position_fraction)
+- [x] **樣本劃分**: 前 70% 樣本內(調參) , 後 30% 樣本外(驗證) , 樣本外數字才算數(run_with_split)
+- [x] **標準化輸出**: JSON 格式績效報告 + 淨值曲線圖(report.save_report 產出 results.json + equity_curve.png + trades.csv)
+- [ ] **手動核對**: 新引擎完成後至少核對 10 筆交易的計算正確性(引擎已輸出 trades.csv 供核對, 待你人工核對)
 
 ### 每次實驗的 5 步工作流
 
