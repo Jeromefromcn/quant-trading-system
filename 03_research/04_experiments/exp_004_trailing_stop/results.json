@@ -1,0 +1,41 @@
+{
+  "experiment_name": "exp_004_trailing_stop",
+  "dataset": "btc_usdt_1d.csv",
+  "strategy": "trend_following",
+  "strategy_parameters": {
+    "fast_span": 12,
+    "slow_span": 26,
+    "adx_period": 14,
+    "adx_threshold": 25.0
+  },
+  "engine_parameters": {
+    "initial_capital": 10000.0,
+    "risk_per_trade_percentage": 0.01,
+    "atr_stop_multiplier": 2.0,
+    "atr_period": 14,
+    "fee_rate": 0.001,
+    "slippage_rate": 0.0005,
+    "max_position_fraction": 1.0,
+    "trading_days_per_year": 365,
+    "trailing_stop_atr_multiplier": 3.0
+  },
+  "in_sample_ratio": 0.7,
+  "in_sample_metrics": {
+    "total_return": 0.44534933561473533,
+    "compound_annual_growth_rate": 0.06101739251548133,
+    "annualized_sharpe_ratio": 1.1395455517028008,
+    "maximum_drawdown": -0.058940139140682364,
+    "number_of_trades": 23,
+    "win_rate": 0.4782608695652174,
+    "profit_factor": 4.284974953321605
+  },
+  "out_of_sample_metrics": {
+    "total_return": 0.08334917126553121,
+    "compound_annual_growth_rate": 0.030455511961852366,
+    "annualized_sharpe_ratio": 0.6303504581743641,
+    "maximum_drawdown": -0.0622685639898023,
+    "number_of_trades": 9,
+    "win_rate": 0.5555555555555556,
+    "profit_factor": 2.989568558620489
+  }
+}
