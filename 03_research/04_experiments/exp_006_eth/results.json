@@ -1,0 +1,40 @@
+{
+  "experiment_name": "exp_006_eth",
+  "dataset": "eth_usdt_1d.csv",
+  "strategy": "trend_following",
+  "strategy_parameters": {
+    "fast_span": 12,
+    "slow_span": 26,
+    "adx_period": 14,
+    "adx_threshold": 25.0
+  },
+  "engine_parameters": {
+    "initial_capital": 10000.0,
+    "risk_per_trade_percentage": 0.01,
+    "atr_stop_multiplier": 2.0,
+    "atr_period": 14,
+    "fee_rate": 0.001,
+    "slippage_rate": 0.0005,
+    "max_position_fraction": 1.0,
+    "trading_days_per_year": 365
+  },
+  "in_sample_ratio": 0.7,
+  "in_sample_metrics": {
+    "total_return": 0.22527339808992553,
+    "compound_annual_growth_rate": 0.03320677488196755,
+    "annualized_sharpe_ratio": 0.6861678152532927,
+    "maximum_drawdown": -0.07071345237045623,
+    "number_of_trades": 31,
+    "win_rate": 0.5161290322580645,
+    "profit_factor": 2.9108810282412896
+  },
+  "out_of_sample_metrics": {
+    "total_return": 0.08642491254372642,
+    "compound_annual_growth_rate": 0.03155087844535398,
+    "annualized_sharpe_ratio": 0.7134321897887648,
+    "maximum_drawdown": -0.0383017708562896,
+    "number_of_trades": 11,
+    "win_rate": 0.45454545454545453,
+    "profit_factor": 4.063831027217854
+  }
+}

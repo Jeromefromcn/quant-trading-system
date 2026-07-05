@@ -1,0 +1,40 @@
+{
+  "experiment_name": "exp_008_qqq",
+  "dataset": "qqq_1d.csv",
+  "strategy": "trend_following",
+  "strategy_parameters": {
+    "fast_span": 12,
+    "slow_span": 26,
+    "adx_period": 14,
+    "adx_threshold": 25.0
+  },
+  "engine_parameters": {
+    "initial_capital": 10000.0,
+    "risk_per_trade_percentage": 0.01,
+    "atr_stop_multiplier": 2.0,
+    "atr_period": 14,
+    "fee_rate": 0.001,
+    "slippage_rate": 0.0005,
+    "max_position_fraction": 1.0,
+    "trading_days_per_year": 252
+  },
+  "in_sample_ratio": 0.7,
+  "in_sample_metrics": {
+    "total_return": 0.07469716734310916,
+    "compound_annual_growth_rate": 0.017557732154028116,
+    "annualized_sharpe_ratio": 0.5270177244070857,
+    "maximum_drawdown": -0.048172776187732844,
+    "number_of_trades": 13,
+    "win_rate": 0.6153846153846154,
+    "profit_factor": 3.0026599744113875
+  },
+  "out_of_sample_metrics": {
+    "total_return": 0.0515688955920397,
+    "compound_annual_growth_rate": 0.028688119283136304,
+    "annualized_sharpe_ratio": 0.8510168959253929,
+    "maximum_drawdown": -0.029912041033989104,
+    "number_of_trades": 5,
+    "win_rate": 0.8,
+    "profit_factor": 3.661033084893735
+  }
+}
