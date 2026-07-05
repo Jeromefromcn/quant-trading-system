@@ -63,6 +63,7 @@ data/processed/
 
 # Generated chart images
 .images/
+*.png
 
 # Logs
 logs/
