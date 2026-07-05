@@ -16,6 +16,7 @@ import os
 import sys
 from dataclasses import dataclass
 
+import numpy as np
 import pandas as pd
 
 # 目錄名以數字開頭無法當成 Python 套件, 手動把回測層, 策略層, 指標層目錄加入模組搜尋路徑
@@ -68,6 +69,60 @@ def compute_position_fraction(
     return position_fraction.clip(upper=max_position_fraction)
 
 
+def apply_trailing_stop_exit(
+    target_position: pd.Series,
+    close_price: pd.Series,
+    average_true_range_series: pd.Series,
+    trailing_stop_atr_multiplier: float,
+) -> pd.Series:
+    """
+    把「純進場信號」轉成「移動止損 (trailing stop) 接管出場」後的目標持倉序列 (未 shift, 交給引擎統一 shift)
+    語義: 進場沿用原始信號的上升緣 (0→1); 進場後忽略原始信號轉 0, 由移動止損取代 EMA 出場;
+    每根用當前 ATR 把止損線往上棘輪 (ratchet, 只增不減); 收盤跌破截至前一根的止損線即出場;
+    出場後保持空手, 直到原始信號重新 0→1 才准再進場 (再進場鎖定, 避免剛停損下一根又買回)
+    路徑依賴 (依進場後的走勢), 無法乾淨向量化 → 引擎執行層以有界 O(n) 迴圈實現;
+    這屬引擎執行層而非策略/指標層, 不牴觸「信號邏輯不用迴圈」的規範, 且策略層維持純向量化
+    因果性: 第 t 根輸出僅依賴 ≤ t 的收盤與 ATR, 沿用引擎「t 收盤決定, t+1 執行」慣例, 通過截斷法前視測試
+    """
+    target_position_values = target_position.to_numpy()
+    close_price_values = close_price.to_numpy()
+    average_true_range_values = average_true_range_series.to_numpy()
+    adjusted_target = np.zeros(len(target_position_values), dtype=int)
+
+    is_in_trade = False
+    trailing_stop_level = 0.0
+    for bar_index in range(len(target_position_values)):
+        if not is_in_trade:
+            is_fresh_entry_edge = target_position_values[bar_index] == 1 and (
+                bar_index == 0 or target_position_values[bar_index - 1] == 0
+            )
+            # ATR 前期為 NaN 時無法設止損線, 不進場; 與原引擎「ATR 未就緒時倉位為 0」一致
+            if is_fresh_entry_edge and np.isfinite(
+                average_true_range_values[bar_index]
+            ):
+                is_in_trade = True
+                trailing_stop_level = (
+                    close_price_values[bar_index]
+                    - trailing_stop_atr_multiplier
+                    * average_true_range_values[bar_index]
+                )
+                adjusted_target[bar_index] = 1
+        else:
+            # 用截至前一根建立的止損線判斷本根是否出場 (不使用本根之後的資訊, 維持因果)
+            if close_price_values[bar_index] < trailing_stop_level:
+                is_in_trade = False
+            else:
+                adjusted_target[bar_index] = 1
+                candidate_stop_level = (
+                    close_price_values[bar_index]
+                    - trailing_stop_atr_multiplier
+                    * average_true_range_values[bar_index]
+                )
+                if candidate_stop_level > trailing_stop_level:
+                    trailing_stop_level = candidate_stop_level
+    return pd.Series(adjusted_target, index=target_position.index)
+
+
 class BacktestEngine:
     """事件驅動思路的向量化回測引擎, 只做多(long-only) , 以每日收盤價結算"""
 
@@ -81,15 +136,18 @@ class BacktestEngine:
         slippage_rate: float = 0.0005,
         max_position_fraction: float = 1.0,
         trading_days_per_year: int = 365,
+        trailing_stop_atr_multiplier: float | None = None,
     ) -> None:
         """
         參數 initial_capital: 起始賬戶淨值, 對應模擬資金規模
         參數 risk_per_trade_percentage: 每筆交易願意承擔的風險佔賬戶比例(ROADMAP 建議 1-2%)
-        參數 atr_stop_multiplier: 止損距離的 ATR 倍數(ROADMAP 建議 2.0)
+        參數 atr_stop_multiplier: 倉位大小用的止損距離 ATR 倍數(ROADMAP 建議 2.0), 僅影響買多少
         參數 fee_rate: 單邊手續費率(Binance Taker 預設 0.1%)
         參數 slippage_rate: 單邊滑點率(保守估計 0.05%)
         參數 max_position_fraction: 單筆倉位佔賬戶淨值的上限, 現貨不做槓桿設 1.0
         參數 trading_days_per_year: 年化用的交易日數, 加密貨幣 365, 美股 252
+        參數 trailing_stop_atr_multiplier: 移動止損的 ATR 倍數; None(預設) 代表不啟用, 出場沿用策略信號;
+            設為正數則啟用移動止損接管出場(取代策略的 EMA 出場), 與倉位用的 atr_stop_multiplier 相互獨立
         """
         self.initial_capital = initial_capital
         self.risk_per_trade_percentage = risk_per_trade_percentage
@@ -99,6 +157,7 @@ class BacktestEngine:
         self.slippage_rate = slippage_rate
         self.max_position_fraction = max_position_fraction
         self.trading_days_per_year = trading_days_per_year
+        self.trailing_stop_atr_multiplier = trailing_stop_atr_multiplier
 
     def run(
         self, ohlcv_dataframe: pd.DataFrame, strategy: Strategy
@@ -109,16 +168,26 @@ class BacktestEngine:
 
         # 1. 策略產生當天收盤後的目標倉位(1 多單 / 0 空手)
         target_position = strategy.generate_signals(ohlcv_dataframe)
-        # 2. 前視偏差防護: 用前一天收盤後決定的信號交易今天的報酬, 引擎統一在此位移
-        executed_position = target_position.shift(1).fillna(0)
 
-        # 3. 固定風險倉位: 算出每天的目標倉位佔比, 並在進場當天鎖定佔比, 持有期間不隨 ATR 每日變動
+        # 2. ATR: 倉位大小與(可選) 移動止損都要用, 只依賴高低收, 與倉位無關, 故先算
         average_true_range_series = average_true_range(
             ohlcv_dataframe["high"],
             ohlcv_dataframe["low"],
             close_price,
             self.atr_period,
         )
+        # 2a. 可選移動止損: 啟用時由止損接管出場(取代策略信號的出場), 在 shift 前改寫目標倉位
+        if self.trailing_stop_atr_multiplier is not None:
+            target_position = apply_trailing_stop_exit(
+                target_position,
+                close_price,
+                average_true_range_series,
+                self.trailing_stop_atr_multiplier,
+            )
+        # 3. 前視偏差防護: 用前一天收盤後決定的信號交易今天的報酬, 引擎統一在此位移
+        executed_position = target_position.shift(1).fillna(0)
+
+        # 4. 固定風險倉位: 算出每天的目標倉位佔比, 並在進場當天鎖定佔比, 持有期間不隨 ATR 每日變動
         position_fraction = compute_position_fraction(
             close_price,
             average_true_range_series,
