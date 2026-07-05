@@ -55,6 +55,7 @@ Pandas:
 
 ## Research Workflow
 
+- New experiment: `python 03_research/04_experiments/new_experiment.py exp_XXX_name` — always scaffold from the generator, never hand-copy an existing `config.py`. Then edit params and run `python config.py`.
 - Log every experiment in `project_manage/STRATEGY_LOG.md`: hypothesis before code, conclusion after. Failed runs count.
 - Research commit: `research: exp_XXX [strategy] - OOS Sharpe=X.X MaxDD=-XX%`
 - Learning commit: `learn: [concept] - [one-line insight]`

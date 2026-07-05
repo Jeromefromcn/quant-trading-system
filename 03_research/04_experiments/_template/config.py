@@ -1,7 +1,7 @@
 """
-exp_001 EMA 雙均線基準版 — Round 1 建立基準的第一個實驗, 測 BTC/USDT 日線
-只放參數, 不放邏輯; 下一個實驗複製本檔改參數即可.
-執行: 直接 python config.py (資料夾名字自動當實驗名), 或 python ../run_experiment.py exp_001_ema_baseline
+實驗設定範本 — 請勿直接執行本檔; 用 new_experiment.py 生成新實驗資料夾後再改參數.
+只放參數, 不放邏輯. 生成後改下面數值即可.
+執行: 直接 python config.py (資料夾名字自動當實驗名), 或 python ../run_experiment.py <資料夾名>
 """
 
 # 數據: 02_data/cache 下的檔名(由 02_data/fetchers 抓取)
@@ -9,7 +9,7 @@ DATASET = "btc_usdt_1d.csv"
 
 # 策略: 對應 run_experiment.py 的 STRATEGY_REGISTRY
 STRATEGY = "trend_following"
-# 策略參數: EMA 快線 12 日, 慢線 26 日, adx_threshold=0 代表純均線交叉不做趨勢過濾(基準版)
+# 策略參數: 依所選策略填. 以下為趨勢跟蹤 (trend following) 的預設骨架, 請按實驗假設調整.
 STRATEGY_PARAMS = {
     "fast_span": 12,
     "slow_span": 26,
@@ -17,7 +17,7 @@ STRATEGY_PARAMS = {
     "adx_threshold": 0.0,
 }
 
-# 引擎參數: 帳戶 $10,000, 每筆風險 1%, 止損 2×ATR, Binance Taker 0.1% + 滑點 0.05%, 加密貨幣年化用 365
+# 引擎參數: 帳戶 $10,000, 每筆風險 1%, 止損 ×ATR, Binance Taker 0.1% + 滑點 0.05%, 加密貨幣年化用 365
 ENGINE_PARAMS = {
     "initial_capital": 10_000.0,
     "risk_per_trade_percentage": 0.01,
