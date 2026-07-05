@@ -1,1 +1,40 @@
-{}
+{
+  "experiment_name": "exp_002_ema_adx",
+  "dataset": "btc_usdt_1d.csv",
+  "strategy": "trend_following",
+  "strategy_parameters": {
+    "fast_span": 12,
+    "slow_span": 26,
+    "adx_period": 14,
+    "adx_threshold": 25.0
+  },
+  "engine_parameters": {
+    "initial_capital": 10000.0,
+    "risk_per_trade_percentage": 0.01,
+    "atr_stop_multiplier": 2.0,
+    "atr_period": 14,
+    "fee_rate": 0.001,
+    "slippage_rate": 0.0005,
+    "max_position_fraction": 1.0,
+    "trading_days_per_year": 365
+  },
+  "in_sample_ratio": 0.7,
+  "in_sample_metrics": {
+    "total_return": 0.6882605664842814,
+    "compound_annual_growth_rate": 0.08785412967631445,
+    "annualized_sharpe_ratio": 1.5374611382900438,
+    "maximum_drawdown": -0.050060867954263025,
+    "number_of_trades": 29,
+    "win_rate": 0.5517241379310345,
+    "profit_factor": 9.918822956802131
+  },
+  "out_of_sample_metrics": {
+    "total_return": 0.12084581736094502,
+    "compound_annual_growth_rate": 0.04367909887037702,
+    "annualized_sharpe_ratio": 0.9727584225709472,
+    "maximum_drawdown": -0.052374162882232275,
+    "number_of_trades": 12,
+    "win_rate": 0.4166666666666667,
+    "profit_factor": 3.721757137648832
+  }
+}
