@@ -11,7 +11,7 @@
   "engine_parameters": {
     "initial_capital": 10000.0,
     "risk_per_trade_percentage": 0.01,
-    "atr_stop_multiplier": 2.0,
+    "atr_stop_multiplier": 3.0,
     "atr_period": 14,
     "fee_rate": 0.001,
     "slippage_rate": 0.0005,
@@ -20,21 +20,21 @@
   },
   "in_sample_ratio": 0.7,
   "in_sample_metrics": {
-    "total_return": 0.8890071516713263,
-    "compound_annual_growth_rate": 0.10768536105729187,
+    "total_return": 0.5336883974165698,
+    "compound_annual_growth_rate": 0.07118682308020619,
     "annualized_sharpe_ratio": 1.4452973874127926,
-    "maximum_drawdown": -0.10278431988469185,
+    "maximum_drawdown": -0.06945225505678845,
     "number_of_trades": 33,
     "win_rate": 0.36363636363636365,
-    "profit_factor": 4.625543364608153
+    "profit_factor": 4.512047686643576
   },
   "out_of_sample_metrics": {
-    "total_return": 0.12427932373323891,
-    "compound_annual_growth_rate": 0.04487605284498897,
-    "annualized_sharpe_ratio": 0.8047161945615604,
-    "maximum_drawdown": -0.06666196051899304,
+    "total_return": 0.0822499894813511,
+    "compound_annual_growth_rate": 0.030063587805392533,
+    "annualized_sharpe_ratio": 0.8047161945615603,
+    "maximum_drawdown": -0.04483604678144959,
     "number_of_trades": 16,
     "win_rate": 0.375,
-    "profit_factor": 2.460130330666598
+    "profit_factor": 2.457246543121626
   }
 }

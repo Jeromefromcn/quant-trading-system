@@ -174,6 +174,19 @@ def _write_notes_skeleton(
         notes_file.write(notes_content)
 
 
+def run_and_print_summary(experiment_name: str) -> dict:
+    """跑實驗並印出樣本外摘要; 供命令列與各 config.py 直接執行共用"""
+    experiment_results = run_experiment(experiment_name)
+    out_of_sample = experiment_results["out_of_sample_metrics"]
+    print(f"實驗 {experiment_name} 完成, 產物已寫回資料夾")
+    print(
+        f"樣本外: Sharpe={out_of_sample['annualized_sharpe_ratio']:.2f}, "
+        f"最大回撤={out_of_sample['maximum_drawdown']:.1%}, "
+        f"交易筆數={out_of_sample['number_of_trades']}"
+    )
+    return experiment_results
+
+
 if __name__ == "__main__":
     argument_parser = argparse.ArgumentParser(description="跑一個實驗資料夾的回測")
     argument_parser.add_argument(
@@ -191,12 +204,4 @@ if __name__ == "__main__":
     if not experiment_name:
         argument_parser.error("必須提供實驗資料夾名稱")
 
-    experiment_results = run_experiment(experiment_name)
-
-    out_of_sample = experiment_results["out_of_sample_metrics"]
-    print(f"實驗 {experiment_name} 完成, 產物已寫回資料夾")
-    print(
-        f"樣本外: Sharpe={out_of_sample['annualized_sharpe_ratio']:.2f}, "
-        f"最大回撤={out_of_sample['maximum_drawdown']:.1%}, "
-        f"交易筆數={out_of_sample['number_of_trades']}"
-    )
+    run_and_print_summary(experiment_name)
