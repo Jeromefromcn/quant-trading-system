@@ -10,8 +10,11 @@ Everything written to CLAUDE.md must be short and direct.
 
 - English punctuation only (`.`, `,`, `!`, `?`, `:`, `;`, `()`), even in Chinese.
 - In Chinese, put a space after each punctuation mark.
+- Reply in whatever language the user's question is written in.
+- Every specific term must include its original English term.
+- Every abbreviation must be annotated with its full form.
 
-Example: 這個策略基於趨勢跟蹤原則, 使用 EMA 雙均線作為入場信號. 樣本外 Sharpe > 1.0.
+Example: 這個策略基於趨勢跟蹤 (trend following) 原則, 使用 EMA (exponential moving average, 指數移動平均線) 雙均線作為入場信號. 樣本外 (out-of-sample, OOS) Sharpe > 1.0.
 
 ## Naming
 
