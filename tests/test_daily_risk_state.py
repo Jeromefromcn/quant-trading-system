@@ -36,3 +36,13 @@ def test_save_and_load_daily_state_round_trip(tmp_path):
 
     assert loaded_state == state
     assert os.path.exists(state_file_path)
+
+
+def test_save_daily_state_with_bare_filename_does_not_raise(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    state = {"utc_date": "2026-07-06", "equity_at_day_start_usdt": 10_000.0}
+
+    daily_risk_state.save_daily_state("bare_filename.json", state)
+    loaded_state = daily_risk_state.load_daily_state("bare_filename.json")
+
+    assert loaded_state == state

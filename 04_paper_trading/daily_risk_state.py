@@ -29,6 +29,8 @@ def load_daily_state(file_path: str) -> dict:
 
 def save_daily_state(file_path: str, state: dict) -> None:
     """把每日風控狀態寫入檔案, 目錄不存在時自動建立"""
-    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+    directory_path = os.path.dirname(file_path)
+    if directory_path:
+        os.makedirs(directory_path, exist_ok=True)
     with open(file_path, "w", encoding="utf-8") as state_file:
         json.dump(state, state_file)
