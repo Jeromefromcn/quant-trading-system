@@ -181,10 +181,10 @@
 
 ### 搭建 Agent 系統(`04_paper_trading/agents/`)
 
-- [ ] `data_agent.py`: WebSocket 實時數據拉取 → 標準化 OHLCV DataFrame
-- [ ] `signal_agent.py`: 在最新數據上運行策略 → SignalEvent(方向, 強度, 標的)
-- [ ] `risk_agent.py`: 風控審核, 硬性規則, 不可繞過 → OrderEvent 或 RejectionEvent
-- [ ] `execution_agent.py`: 執行訂單, 記錄結果 → FillEvent 或 FailEvent + 報警
+- [x] `data_agent.py`: REST 輪詢(polling) 拉取最新 K 線 → 標準化 OHLCV DataFrame(Slice 1 改用輪詢, 不用 WebSocket; exp_002 策略以日線決策, 不需要次秒級數據, 見 `docs/superpowers/specs/2026-07-06-phase3-paper-trading-slice1-design.md`)
+- [x] `signal_agent.py`: 在最新數據上運行凍結的 exp_002 策略 → SignalEvent(目標倉位, 標的, 收盤價, ATR)
+- [x] `risk_agent.py`: 比對目標倉位與當前倉位, 套用倉位大小上限檢查 → OrderEvent, RejectionEvent 或 None(完整風控規則留待後續切片)
+- [x] `execution_agent.py`: 對 Binance Testnet 執行真實市價單, 記錄結果 → FillEvent 或 FailEvent(報警留待監控切片)
 
 ### 風控 Agent 硬性規則實現
 
