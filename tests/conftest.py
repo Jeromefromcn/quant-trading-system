@@ -11,6 +11,8 @@ _research_module_directories = [
     os.path.join(_repository_root, "03_research", "01_indicators"),
     os.path.join(_repository_root, "03_research", "02_strategies"),
     os.path.join(_repository_root, "03_research", "03_backtest"),
+    os.path.join(_repository_root, "04_paper_trading"),
+    os.path.join(_repository_root, "04_paper_trading", "agents"),
 ]
 for _module_directory in _research_module_directories:
     if _module_directory not in sys.path:
