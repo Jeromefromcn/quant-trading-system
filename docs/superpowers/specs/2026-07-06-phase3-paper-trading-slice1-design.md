@@ -93,3 +93,26 @@ tests/
   test_paper_trading_signal_agent.py
   test_paper_trading_risk_agent.py
 ```
+
+## 實作後記錄: 已知遺留事項 (known follow-ups)
+
+Slice 1 已完成並跑通一次真實 Binance Testnet 下單 (詳見下方「執行紀錄」) 。實作過程中的程式碼審查 (含逐任務審查與最後的全分支審查) 額外發現一批 Minor 等級的項目, 當時判斷不影響「證明管線接通」這個目標, 故意延後不修, 但沒有被寫進任何持久文件. 记录於此, 供後續切片(尤其是碰到同一批檔案時) 參考, 不代表待辦優先序:
+
+**測試覆蓋缺口**:
+- `risk_agent.determine_current_position` 的粉塵門檻(剛好 10.0 USDT) 與風控上限(剛好等於上限本身) 這兩個邊界值目前只測「明顯高於/低於」, 沒測邊界本身(邏輯上正確, 只是沒測到)
+- `run_once.py` 的 `RejectionEvent` 分支沒有被明確具名測試(它會走與 `None` 相同的程式碼路徑, 屬於間接覆蓋, 不是完全沒測)
+- `tests/test_paper_trading_data_agent.py` 裡兩個測試各自定義了一份幾乎一樣的 `_fake_request_klines_batch` closure, 可以提到共用 helper
+
+**已知但暫不處理的邊界情況**:
+- `execution_agent.execute()` 目前只捕捉 `requests.exceptions.RequestException`; 若 `.env` 憑證缺漏導致 `_get_credentials` 拋出 `RuntimeError`, 或交易所回傳非 JSON 內容導致 `response.json()` 拋出 `JSONDecodeError`, 這兩種例外都不會被轉成 `FailEvent`, 而是原樣往外拋, 最終被 `run_once.py` 的最外層 `except Exception` 接住(記錄失敗後非零結束) — 是失敗方式明確(fail loud) , 但不是這次修過的兩個「網路例外」情境, 屬於刻意縮小範圍後留下的空隙
+- 輪詢中被捕捉到的網路例外目前沒有任何 log/telemetry, 持續網路不穩時會悄悄吃掉好幾次輪詢預算, 只留最終「狀態不明」訊息, 排查起來線索較少 — 之後做監控切片(monitor.py) 時一併考慮
+- `get_symbol_filters` 回傳的 `min_notional` 目前完全沒被使用(只有 `step_size` 真正參與裁剪) , 交易所自己的 MIN_NOTIONAL 過濾規則仍會攔下過小訂單並回傳明確拒絕原因, 只是我們沒有提前自行判斷, 算是預留但還沒接上的欄位
+- `risk_agent` 的買進金額用**即時帳戶淨值**計算倉位大小(`account_equity_usdt`) , 但風控上限用的是**固定的 `initial_capital`**, 兩者基準不同(刻意的雙層防呆設計, 見上方風控說明) ; 副作用是若 Testnet 假資金淨值遠高於 `initial_capital`, 理論上可能出現「正常訊號被上限擋下」的情況, 目前尚未實際發生
+
+**架構層的已知風險(目前休眠, 沒有觸發條件)**:
+- `signal_agent.py` 用 `sys.path` 操作 import exp_002 的 `config.py`, 但 `03_research/04_experiments/` 下每個實驗資料夾都有一份同名的 `config.py`. 目前整個程式庫只有 `signal_agent.py` 一處這樣 import, 不會撞名; 但若未來有其他腳本/測試在同一個 process 裡也 `from config import ...` 匯入別的實驗設定, Python 的 `sys.modules['config']` 快取可能讓兩邊互相汙染. 之後若真的需要, 可考慮改用 `importlib` 依絕對路徑載入, 避開這個通用模組名稱
+
+**執行紀錄(2026-07-06 手動驗證) **:
+- 真實下單: SELL 0.7444 BTC, 均價 62927.3 USDT, 訂單編號 13701966, 成交(FillEvent)
+- 冪等性: 緊接著再跑一次, 正確判斷目標倉位與當前倉位一致, 回報 `NoActionNeeded`, 沒有重複下單
+- 這次驗證剛好只走到賣出(平倉) 路徑; 買進路徑(倉位大小計算 + 風控上限) 已有完整單元測試與設定值核對, 但尚未被真實下單驗證過 — 等 exp_002 之後真的發出多單訊號時, 會是買進路徑的第一次真實測試
