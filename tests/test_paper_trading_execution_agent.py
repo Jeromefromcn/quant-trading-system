@@ -132,6 +132,39 @@ def test_execute_returns_fail_event_when_place_order_raises_network_exception(mo
     assert "網路例外" in result.reason
 
 
+def test_execute_returns_fill_event_when_filled_on_final_poll_attempt(monkeypatch):
+    order_event = OrderEvent(symbol="BTCUSDT", side="BUY", quantity=0.05)
+    monkeypatch.setattr(
+        execution_agent,
+        "place_market_order",
+        lambda symbol, side, quantity: (200, {"orderId": 123, "status": "NEW"}),
+    )
+    monkeypatch.setattr(execution_agent.time, "sleep", lambda seconds: None)
+
+    call_count = {"count": 0}
+
+    def _get_order_status_fills_on_last_attempt(symbol, order_id):
+        call_count["count"] += 1
+        if call_count["count"] < execution_agent.MAXIMUM_STATUS_POLL_ATTEMPTS:
+            return (200, {"orderId": 123, "status": "NEW"})
+        return (
+            200,
+            {
+                "orderId": 123,
+                "status": "FILLED",
+                "executedQty": "0.0500",
+                "cummulativeQuoteQty": "2500.00",
+            },
+        )
+
+    monkeypatch.setattr(execution_agent, "get_order_status", _get_order_status_fills_on_last_attempt)
+
+    result = execution_agent.execute(order_event, SYMBOL_FILTERS)
+
+    assert isinstance(result, FillEvent)
+    assert call_count["count"] == execution_agent.MAXIMUM_STATUS_POLL_ATTEMPTS
+
+
 def test_execute_continues_polling_when_get_order_status_raises_network_exception(monkeypatch):
     order_event = OrderEvent(symbol="BTCUSDT", side="BUY", quantity=0.05)
     monkeypatch.setattr(

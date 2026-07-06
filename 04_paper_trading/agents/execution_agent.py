@@ -71,7 +71,7 @@ def execute(order_event: OrderEvent, symbol_filters: dict) -> FillEvent | FailEv
     order_status_response = order_response
     # 輪詢迴圈屬執行層 I/O 控制流程, 非訊號/指標邏輯, 不受向量化規範限制(與 engine.py 的
     # apply_trailing_stop_exit 前例一致)
-    for _ in range(MAXIMUM_STATUS_POLL_ATTEMPTS):
+    for attempt_index in range(MAXIMUM_STATUS_POLL_ATTEMPTS + 1):
         current_status = order_status_response.get("status")
         if current_status == "FILLED":
             return FillEvent(
@@ -87,6 +87,11 @@ def execute(order_event: OrderEvent, symbol_filters: dict) -> FillEvent | FailEv
                 reason=f"訂單狀態為 {current_status}",
                 raw_exchange_response=str(order_status_response),
             )
+        # 最後一輪(attempt_index == MAXIMUM_STATUS_POLL_ATTEMPTS) 只檢查, 不再多打一次查詢請求,
+        # 讓實際網路查詢次數精確等於 MAXIMUM_STATUS_POLL_ATTEMPTS, 同時確保最後一次查詢結果也會被檢查到
+        # (修正前的版本: 迴圈跑 5 次查詢卻只檢查 4 次查詢結果, 第 5 次查到的狀態從未被評估過)
+        if attempt_index == MAXIMUM_STATUS_POLL_ATTEMPTS:
+            break
         time.sleep(POLL_INTERVAL_SECONDS)
         try:
             _, order_status_response = get_order_status(order_event.symbol, order_id)
