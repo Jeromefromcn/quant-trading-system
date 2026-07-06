@@ -2,6 +2,8 @@
 Binance 歷史 K 線抓取器 — 從 Binance 公開行情 API 分頁抓取指定交易對的完整歷史日線
 公開行情端點不需要 API Key. Binance 單次最多回傳 1000 根 K 線, 需用 startTime 分頁往後累積,
 直到抓到最新一根. 抓下來的數據存到本地 cache(被 gitignore) , 供研究層重複讀取, 不必每次重打 API
+本檔的請求與解析函式 (request_klines_batch, parse_klines_to_ohlcv_dataframe, drop_unclosed_last_candle)
+也被 04_paper_trading/agents/data_agent.py 重用, 供即時抓取最新 K 線, 兩處共用同一段已測試邏輯
 """
 
 import os
@@ -32,6 +34,50 @@ KLINE_COLUMNS = [
 PRICE_AND_VOLUME_COLUMNS = ["open", "high", "low", "close", "volume"]
 
 
+def request_klines_batch(
+    symbol: str, interval: str, limit: int, start_time_milliseconds: int | None = None
+) -> list:
+    """
+    打一次 Binance 公開 K 線端點, 回傳原始 (未解析) 的 K 線陣列列表
+    參數 start_time_milliseconds 為 None 時, Binance 回傳「最新」的 limit 根 K 線 (不分頁, 供即時抓取用)
+    給定 start_time_milliseconds 時, 回傳從該時間點開始的 limit 根 (供歷史分頁抓取用)
+    """
+    request_parameters = {"symbol": symbol, "interval": interval, "limit": limit}
+    if start_time_milliseconds is not None:
+        request_parameters["startTime"] = start_time_milliseconds
+    response = requests.get(BINANCE_KLINES_ENDPOINT, params=request_parameters, timeout=30)
+    response.raise_for_status()
+    return response.json()
+
+
+def parse_klines_to_ohlcv_dataframe(klines_batch: list) -> pd.DataFrame:
+    """
+    把 Binance 原始 K 線陣列列表解析成核心 OHLCV(開高低收量) 欄位 + close_time 的 DataFrame, 時間升冪排列
+    保留 close_time 供 drop_unclosed_last_candle 判斷最後一根是否已收盤, 該函式回傳前會將其移除
+    """
+    kline_dataframe = pd.DataFrame(klines_batch, columns=KLINE_COLUMNS)
+    kline_dataframe["open_time"] = pd.to_datetime(kline_dataframe["open_time"], unit="ms")
+    kline_dataframe[PRICE_AND_VOLUME_COLUMNS] = kline_dataframe[
+        PRICE_AND_VOLUME_COLUMNS
+    ].astype(float)
+    kline_dataframe["close_time"] = pd.to_datetime(kline_dataframe["close_time"], unit="ms")
+    return kline_dataframe[
+        ["open_time", "open", "high", "low", "close", "volume", "close_time"]
+    ].copy()
+
+
+def drop_unclosed_last_candle(ohlcv_dataframe: pd.DataFrame) -> pd.DataFrame:
+    """
+    最後一根 K 線通常尚未收盤(仍在跳動) , 為避免用到不完整數據, 若尚未收盤則移除
+    回傳前移除 close_time 輔助欄位, 只留核心 OHLCV 欄位, 並重設索引
+    """
+    last_close_time = ohlcv_dataframe["close_time"].iloc[-1]
+    current_utc_time = pd.Timestamp.now("UTC").tz_localize(None)
+    if last_close_time > current_utc_time:
+        ohlcv_dataframe = ohlcv_dataframe.iloc[:-1]
+    return ohlcv_dataframe.drop(columns=["close_time"]).reset_index(drop=True)
+
+
 def fetch_full_history_klines(
     symbol: str, interval: str = "1d", request_pause_seconds: float = 0.2
 ) -> pd.DataFrame:
@@ -40,24 +86,16 @@ def fetch_full_history_klines(
     參數 symbol: 交易對代號, 例如 "BTCUSDT"
     參數 interval: K 線週期, 例如 "1d"(日線) , "4h"(4 小時線)
     參數 request_pause_seconds: 每次請求之間的暫停, 禮貌性避免觸發 Binance 速率限制
-    回傳只含核心 OHLCV(開高低收量) 欄位的 DataFrame, 時間升冪排列, 已去除最後一根未收盤 K 線
+    回傳只含核心 OHLCV 欄位的 DataFrame, 時間升冪排列, 已去除最後一根未收盤 K 線
     """
     accumulated_rows = []
     # startTime 設為 0, Binance 會自動從該交易對真正上市的第一根 K 線開始回傳
     next_start_time_milliseconds = 0
 
     while True:
-        request_parameters = {
-            "symbol": symbol,
-            "interval": interval,
-            "limit": MAX_KLINES_PER_REQUEST,
-            "startTime": next_start_time_milliseconds,
-        }
-        response = requests.get(
-            BINANCE_KLINES_ENDPOINT, params=request_parameters, timeout=30
+        klines_batch = request_klines_batch(
+            symbol, interval, MAX_KLINES_PER_REQUEST, next_start_time_milliseconds
         )
-        response.raise_for_status()
-        klines_batch = response.json()
         if not klines_batch:
             break
 
@@ -71,29 +109,8 @@ def fetch_full_history_klines(
             break
         time.sleep(request_pause_seconds)
 
-    kline_dataframe = pd.DataFrame(accumulated_rows, columns=KLINE_COLUMNS)
-    kline_dataframe["open_time"] = pd.to_datetime(
-        kline_dataframe["open_time"], unit="ms"
-    )
-    kline_dataframe[PRICE_AND_VOLUME_COLUMNS] = kline_dataframe[
-        PRICE_AND_VOLUME_COLUMNS
-    ].astype(float)
-    kline_dataframe["close_time"] = pd.to_datetime(
-        kline_dataframe["close_time"], unit="ms"
-    )
-
-    # 只保留核心 OHLCV 欄位, 丟掉幣安內部記帳用的輔助欄位
-    ohlcv_dataframe = kline_dataframe[
-        ["open_time", "open", "high", "low", "close", "volume"]
-    ].copy()
-
-    # 最後一根 K 線通常尚未收盤(仍在跳動) , 為避免用到不完整數據回測, 只有當它已收盤才保留
-    last_close_time = kline_dataframe["close_time"].iloc[-1]
-    current_utc_time = pd.Timestamp.now("UTC").tz_localize(None)
-    if last_close_time > current_utc_time:
-        ohlcv_dataframe = ohlcv_dataframe.iloc[:-1]
-
-    return ohlcv_dataframe.reset_index(drop=True)
+    ohlcv_dataframe = parse_klines_to_ohlcv_dataframe(accumulated_rows)
+    return drop_unclosed_last_candle(ohlcv_dataframe)
 
 
 def save_to_cache(ohlcv_dataframe: pd.DataFrame, cache_file_name: str) -> str:

@@ -8,6 +8,7 @@ import sys
 
 _repository_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _research_module_directories = [
+    os.path.join(_repository_root, "02_data", "fetchers"),
     os.path.join(_repository_root, "03_research", "01_indicators"),
     os.path.join(_repository_root, "03_research", "02_strategies"),
     os.path.join(_repository_root, "03_research", "03_backtest"),
