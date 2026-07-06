@@ -7,6 +7,8 @@ import os
 import sys
 import time
 
+import requests
+
 from binance_testnet_client import (
     get_order_status,
     place_market_order,
@@ -46,9 +48,18 @@ def execute(order_event: OrderEvent, symbol_filters: dict) -> FillEvent | FailEv
             raw_exchange_response="",
         )
 
-    status_code, order_response = place_market_order(
-        order_event.symbol, order_event.side, rounded_quantity
-    )
+    try:
+        status_code, order_response = place_market_order(
+            order_event.symbol, order_event.side, rounded_quantity
+        )
+    except requests.exceptions.RequestException as network_error:
+        # 下單請求本身發生網路例外: 無法得知訂單是否已送達交易所, 也拿不到 order_id 可供輪詢,
+        # 只能記錄為需人工核對, 絕不能盲目重送(可能造成重複下單)
+        return FailEvent(
+            symbol=order_event.symbol,
+            reason=f"下單請求發生網路例外, 無法確認訂單是否已送達交易所, 需人工核對: {network_error}",
+            raw_exchange_response="",
+        )
     if status_code != 200:
         return FailEvent(
             symbol=order_event.symbol,
@@ -77,7 +88,12 @@ def execute(order_event: OrderEvent, symbol_filters: dict) -> FillEvent | FailEv
                 raw_exchange_response=str(order_status_response),
             )
         time.sleep(POLL_INTERVAL_SECONDS)
-        _, order_status_response = get_order_status(order_event.symbol, order_id)
+        try:
+            _, order_status_response = get_order_status(order_event.symbol, order_id)
+        except requests.exceptions.RequestException:
+            # 查詢狀態時網路例外: 訂單已確定送達交易所(已拿到 order_id), 只是這次查詢失敗,
+            # 保留上一輪的狀態不變, 讓迴圈繼續嘗試下一次, 逾時後併入下方「狀態不明」的結論
+            continue
 
     return FailEvent(
         symbol=order_event.symbol,
