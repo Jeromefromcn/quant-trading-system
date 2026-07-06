@@ -5,10 +5,10 @@ import pytest
 import data_agent
 
 
-def _make_raw_kline(open_time_ms, close_time_ms):
+def _make_raw_kline(open_time_milliseconds, close_time_milliseconds):
     return [
-        open_time_ms, "100.0", "101.0", "99.0", "100.0", "10.0",
-        close_time_ms, "1000.0", 5, "5.0", "500.0", "0",
+        open_time_milliseconds, "100.0", "101.0", "99.0", "100.0", "10.0",
+        close_time_milliseconds, "1000.0", 5, "5.0", "500.0", "0",
     ]
 
 
@@ -22,9 +22,14 @@ def test_fetch_latest_candles_returns_requested_length(monkeypatch):
         open_milliseconds = first_open_milliseconds + index * interval_milliseconds
         close_milliseconds = open_milliseconds + interval_milliseconds - 1
         raw_klines.append(_make_raw_kline(open_milliseconds, close_milliseconds))
-    monkeypatch.setattr(
-        data_agent, "request_klines_batch", lambda symbol, interval, limit: raw_klines
-    )
+
+    recorded_calls = []
+
+    def _fake_request_klines_batch(symbol, interval, limit):
+        recorded_calls.append({"symbol": symbol, "interval": interval, "limit": limit})
+        return raw_klines
+
+    monkeypatch.setattr(data_agent, "request_klines_batch", _fake_request_klines_batch)
 
     ohlcv_dataframe = data_agent.fetch_latest_candles("BTCUSDT", lookback_bars=10)
 
@@ -32,6 +37,8 @@ def test_fetch_latest_candles_returns_requested_length(monkeypatch):
     assert list(ohlcv_dataframe.columns) == [
         "open_time", "open", "high", "low", "close", "volume",
     ]
+    # 驗證 limit 契約: lookback_bars=10 時應多要一根(11) , 才能在丟棄未收盤最後一根後仍保留 10 根
+    assert recorded_calls == [{"symbol": "BTCUSDT", "interval": "1d", "limit": 11}]
 
 
 def test_fetch_latest_candles_raises_when_insufficient_bars(monkeypatch):
@@ -40,9 +47,17 @@ def test_fetch_latest_candles_raises_when_insufficient_bars(monkeypatch):
         _make_raw_kline(day * interval_milliseconds, day * interval_milliseconds + interval_milliseconds - 1)
         for day in range(5)
     ]
-    monkeypatch.setattr(
-        data_agent, "request_klines_batch", lambda symbol, interval, limit: raw_klines
-    )
+
+    recorded_calls = []
+
+    def _fake_request_klines_batch(symbol, interval, limit):
+        recorded_calls.append({"symbol": symbol, "interval": interval, "limit": limit})
+        return raw_klines
+
+    monkeypatch.setattr(data_agent, "request_klines_batch", _fake_request_klines_batch)
 
     with pytest.raises(ValueError, match="少於暖身所需"):
         data_agent.fetch_latest_candles("BTCUSDT", lookback_bars=10)
+
+    # 驗證 limit 契約: lookback_bars=10 時應多要一根(11) , 即使結果不足也要先確認請求參數正確
+    assert recorded_calls == [{"symbol": "BTCUSDT", "interval": "1d", "limit": 11}]
