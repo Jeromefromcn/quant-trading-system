@@ -5,6 +5,7 @@ Risk agent — 比對策略目標倉位與交易所目前實際倉位, 決定要
 """
 import os
 import sys
+from datetime import datetime, timedelta
 
 import pandas as pd
 
@@ -83,6 +84,53 @@ def check_max_concurrent_positions(
 ) -> bool:
     """回傳 True 代表該類別(加密貨幣或美股) 尚未達最大同時持倉數上限"""
     return current_position_count < max_positions_by_market[market_type]
+
+
+def check_correlation_limit(
+    candidate_close_price_series: pd.Series,
+    existing_position_close_price_series: dict,
+    max_correlation: float = 0.8,
+) -> bool:
+    """
+    回傳 True 代表候選標的與所有現有持倉的日報酬率相關係數皆未超過上限, 可以開倉
+    任一現有持倉缺少至少 2 個重疊報酬率數據點, 或相關係數算出 NaN(例如某段價格完全不變) ,
+    視為無法確認風險, 直接回傳 False(風控規則寧可保守拒絕, 不因數據不足而放行)
+    """
+    if not existing_position_close_price_series:
+        return True
+    candidate_returns = candidate_close_price_series.pct_change().dropna()
+    for existing_returns_series in existing_position_close_price_series.values():
+        existing_returns = existing_returns_series.pct_change().dropna()
+        overlapping_length = min(len(candidate_returns), len(existing_returns))
+        if overlapping_length < 2:
+            return False
+        aligned_candidate_returns = candidate_returns.iloc[-overlapping_length:].reset_index(
+            drop=True
+        )
+        aligned_existing_returns = existing_returns.iloc[-overlapping_length:].reset_index(
+            drop=True
+        )
+        correlation = aligned_candidate_returns.corr(aligned_existing_returns)
+        if pd.isna(correlation) or correlation > max_correlation:
+            return False
+    return True
+
+
+def check_data_staleness(
+    last_candle_open_time: datetime,
+    current_time: datetime,
+    bar_interval: timedelta = timedelta(days=1),
+    staleness_multiplier: float = 1.5,
+) -> bool:
+    """
+    回傳 True 代表數據新鮮, 可以繼續產生信號; False 代表已過期, 應暫停該標的的信號生成
+    以「最後一根 K 線的約略收盤時間(開盤時間 + 一個週期) 」到現在經過的時間,
+    對比 K 線週期的 staleness_multiplier 倍門檻 — 用相對於週期的門檻, 而非固定分鐘數,
+    因為 exp_002 策略以日線決策, 固定的短分鐘數門檻對日線沒有意義(見設計文件)
+    """
+    approximate_close_time = last_candle_open_time + bar_interval
+    time_since_close = current_time - approximate_close_time
+    return time_since_close <= bar_interval * staleness_multiplier
 
 
 def review(

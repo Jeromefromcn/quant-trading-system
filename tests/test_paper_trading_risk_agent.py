@@ -1,6 +1,7 @@
 """risk_agent 的單元測試 — 涵蓋三種結果分支: 無動作, 核准下單(買/賣) , 風控擋下"""
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
+import pandas as pd
 import pytest
 
 import risk_agent
@@ -130,3 +131,58 @@ def test_review_rejects_buy_when_notional_exceeds_cap():
 
     assert isinstance(result, RejectionEvent)
     assert "超過風控上限" in result.reason
+
+
+def test_check_correlation_limit_passes_when_no_existing_positions():
+    candidate_close_prices = pd.Series([100.0, 101.0, 102.0])
+    assert risk_agent.check_correlation_limit(candidate_close_prices, {}) is True
+
+
+def test_check_correlation_limit_passes_when_returns_are_negatively_correlated():
+    # candidate 與 existing 每一步漲跌方向都相反, 相關係數應明顯為負, 遠低於 0.8 上限
+    candidate_close_prices = pd.Series([100.0, 110.0, 100.0, 110.0, 100.0, 110.0])
+    existing_close_prices = pd.Series([100.0, 90.0, 100.0, 90.0, 100.0, 90.0])
+    assert risk_agent.check_correlation_limit(
+        candidate_close_prices, {"ETHUSDT": existing_close_prices}, max_correlation=0.8
+    ) is True
+
+
+def test_check_correlation_limit_rejects_when_perfectly_correlated():
+    candidate_close_prices = pd.Series([100.0, 102.0, 99.0, 105.0, 110.0])
+    existing_close_prices = candidate_close_prices * 2.0  # 純比例縮放, 報酬率與 candidate 完全相同
+    assert risk_agent.check_correlation_limit(
+        candidate_close_prices, {"ETHUSDT": existing_close_prices}, max_correlation=0.8
+    ) is False
+
+
+def test_check_correlation_limit_rejects_when_insufficient_overlap():
+    candidate_close_prices = pd.Series([100.0, 101.0])  # pct_change 後只剩 1 個數據點
+    existing_close_prices = pd.Series([100.0, 101.0])
+    assert risk_agent.check_correlation_limit(
+        candidate_close_prices, {"ETHUSDT": existing_close_prices}, max_correlation=0.8
+    ) is False
+
+
+def test_check_data_staleness_passes_when_within_threshold():
+    current_time = datetime(2026, 7, 6, 12, 0, tzinfo=timezone.utc)
+    last_candle_open_time = datetime(2026, 7, 5, 12, 0, tzinfo=timezone.utc)  # 24 小時前開盤
+    assert risk_agent.check_data_staleness(
+        last_candle_open_time, current_time, timedelta(days=1), 1.5
+    ) is True
+
+
+def test_check_data_staleness_passes_at_exact_boundary():
+    current_time = datetime(2026, 7, 6, 12, 0, tzinfo=timezone.utc)
+    last_candle_open_time = datetime(2026, 7, 4, 0, 0, tzinfo=timezone.utc)
+    # 約略收盤時間 = 開盤 + 1 天 = 2026-07-05 00:00, 距今 1.5 天, 剛好等於門檻
+    assert risk_agent.check_data_staleness(
+        last_candle_open_time, current_time, timedelta(days=1), 1.5
+    ) is True
+
+
+def test_check_data_staleness_rejects_when_beyond_threshold():
+    current_time = datetime(2026, 7, 6, 12, 0, tzinfo=timezone.utc)
+    last_candle_open_time = datetime(2026, 7, 3, 12, 0, tzinfo=timezone.utc)  # 3 天前開盤
+    assert risk_agent.check_data_staleness(
+        last_candle_open_time, current_time, timedelta(days=1), 1.5
+    ) is False
