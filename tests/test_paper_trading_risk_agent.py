@@ -34,6 +34,64 @@ def test_determine_current_position_long_when_above_dust_threshold():
     assert risk_agent.determine_current_position(0.001, 50_000.0) == 1  # 市值 50 USDT, 高於 10 門檻
 
 
+def test_determine_current_position_exactly_at_dust_threshold_is_long():
+    assert risk_agent.determine_current_position(0.0002, 50_000.0) == 1  # 市值剛好 10 USDT, 達門檻視為多單
+
+
+def test_check_max_loss_per_trade_passes_within_cap():
+    assert risk_agent.check_max_loss_per_trade(
+        order_quantity=0.03,
+        average_true_range=1_000.0,
+        atr_stop_multiplier=2.0,
+        account_equity_usdt=10_000.0,
+        max_loss_per_trade_fraction=0.015,
+    ) is True  # 潛在虧損 = 0.03 * 2 * 1000 = 60, 上限 = 10000 * 0.015 = 150
+
+
+def test_check_max_loss_per_trade_passes_at_exact_boundary():
+    assert risk_agent.check_max_loss_per_trade(
+        order_quantity=0.075,
+        average_true_range=1_000.0,
+        atr_stop_multiplier=2.0,
+        account_equity_usdt=10_000.0,
+        max_loss_per_trade_fraction=0.015,
+    ) is True  # 潛在虧損 = 0.075 * 2 * 1000 = 150, 剛好等於上限 150
+
+
+def test_check_max_loss_per_trade_rejects_when_exceeding_cap():
+    assert risk_agent.check_max_loss_per_trade(
+        order_quantity=0.1,
+        average_true_range=1_000.0,
+        atr_stop_multiplier=2.0,
+        account_equity_usdt=10_000.0,
+        max_loss_per_trade_fraction=0.015,
+    ) is False  # 潛在虧損 = 0.1 * 2 * 1000 = 200, 超過上限 150
+
+
+def test_check_daily_circuit_breaker_passes_when_no_loss():
+    assert risk_agent.check_daily_circuit_breaker(10_000.0, 10_000.0, 0.04) is True
+
+
+def test_check_daily_circuit_breaker_passes_at_exact_boundary():
+    assert risk_agent.check_daily_circuit_breaker(9_600.0, 10_000.0, 0.04) is True  # 虧損剛好 4%
+
+
+def test_check_daily_circuit_breaker_rejects_when_exceeding_threshold():
+    assert risk_agent.check_daily_circuit_breaker(9_500.0, 10_000.0, 0.04) is False  # 虧損 5%
+
+
+def test_check_max_concurrent_positions_passes_below_cap():
+    assert risk_agent.check_max_concurrent_positions(1, "crypto", {"crypto": 3, "stocks": 5}) is True
+
+
+def test_check_max_concurrent_positions_passes_just_below_cap():
+    assert risk_agent.check_max_concurrent_positions(2, "crypto", {"crypto": 3, "stocks": 5}) is True
+
+
+def test_check_max_concurrent_positions_rejects_at_cap():
+    assert risk_agent.check_max_concurrent_positions(3, "crypto", {"crypto": 3, "stocks": 5}) is False
+
+
 def test_review_returns_none_when_target_matches_current():
     signal_event = _make_signal_event(target_position=0)
 

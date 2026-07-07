@@ -49,6 +49,42 @@ def compute_buy_quantity(
     return position_value_usdt / close_price
 
 
+def check_max_loss_per_trade(
+    order_quantity: float,
+    average_true_range: float,
+    atr_stop_multiplier: float,
+    account_equity_usdt: float,
+    max_loss_per_trade_fraction: float = 0.015,
+) -> bool:
+    """
+    估算這筆開倉若觸及停損會虧損多少(數量 × 停損距離) , 回傳 True 代表未超過帳戶淨值上限
+    這與既有的名目金額上限是不同維度的雙層防呆(defense-in-depth) : 一個限制潛在虧損,
+    一個限制部位金額本身; 在凍結的 exp_002 風險比例(1%) 下, 這條規則正常情況下不會觸發,
+    只在風險比例設定被改動或計算異常時才會攔下, 與既有名目金額上限的防呆精神一致
+    """
+    potential_loss_usdt = order_quantity * atr_stop_multiplier * average_true_range
+    return potential_loss_usdt <= account_equity_usdt * max_loss_per_trade_fraction
+
+
+def check_daily_circuit_breaker(
+    account_equity_usdt: float,
+    day_start_equity_usdt: float,
+    max_daily_loss_fraction: float = 0.04,
+) -> bool:
+    """回傳 True 代表尚未觸發每日熔斷; 當日開始淨值為 0 或負值時視為無法判斷, 保守放行不誤擋"""
+    if day_start_equity_usdt <= 0:
+        return True
+    daily_loss_fraction = (day_start_equity_usdt - account_equity_usdt) / day_start_equity_usdt
+    return daily_loss_fraction <= max_daily_loss_fraction
+
+
+def check_max_concurrent_positions(
+    current_position_count: int, market_type: str, max_positions_by_market: dict
+) -> bool:
+    """回傳 True 代表該類別(加密貨幣或美股) 尚未達最大同時持倉數上限"""
+    return current_position_count < max_positions_by_market[market_type]
+
+
 def review(
     signal_event: SignalEvent,
     current_base_asset_balance: float,
