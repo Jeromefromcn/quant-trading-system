@@ -117,3 +117,37 @@ tests/
   test_paper_trading_risk_agent.py   (擴充)
   test_daily_risk_state.py           (新增)
 ```
+
+## 實作後記錄: 執行紀錄(2026-07-07 手動驗證)
+
+Slice 2 已完成並對真實 Binance Testnet + 真實 Telegram 跑通兩次 `run_once.py`(緊接著驗證冪等性), 詳見下方.
+
+**重要更正說明(本次驗證發現的既有狀態)**: 開始本次驗證前, `04_paper_trading/logs/run_log.jsonl`(4 行) 與 `daily_risk_state.json`(`equity_at_day_start_usdt` = 57711.733164, 對應同一 UTC 日更早的 05:44 執行) 已存在 —— 顯示同一天稍早已有另一次未留下 Commit 紀錄的手動驗證, 且該次驗證已對真實 Testnet 帳戶送出一筆真實成交 : ETHUSDT SELL 1.0, 均價 1769.33 USDT, 訂單編號 9356029(平倉既有多單). 本次驗證執行 Step 4 之前, 誤將這兩個檔案刪除後才開始執行(未先讀取內容備份), 導致 : (a) 稍早那筆真實成交在本地 `run_log.jsonl` 的紀錄遺失(交易所本身的真實成交紀錄不受影響, 只有本地稽核記錄消失) ; (b) `daily_risk_state.json` 的每日熔斷基準時間點被重設成本次驗證開始時間(10:41 UTC) 而非當日最早的 05:44 UTC 基準, 兩者數值相差約 30 USDT(約 0.05%), 對當日熔斷判斷實務影響可忽略, 但流程上不應該在未確認既有內容前刪除本地狀態檔案. 誠實記錄於此, 供之後查閱.
+
+**Telegram 警報整合驗證**: 獨立執行 `telegram_alerts.send_alert('Slice 2 手動驗證: Telegram 警報整合測試')`, 終端機無任何輸出(`send_alert` 只在缺憑證 / 非 200 回應 / 網路例外時才印訊息, 無輸出即代表 HTTP 200 送出成功), 確認訊息已送達 Telegram 聊天視窗.
+
+**完整測試套件**: `pytest tests/ -v` — 114 passed, 全數通過.
+
+**第一次 `run_once.py` 執行**(2026-07-07T10:41:49Z):
+- `daily_risk_state.json` 首次建立, `equity_at_day_start_usdt` = 57681.503164(取自真實 Testnet 帳戶淨值, 數值合理)
+- BTCUSDT: `risk_decision` = `NoActionNeeded`(目標倉位與當前倉位相符), `execution_result` = null
+- ETHUSDT: `risk_decision` = `NoActionNeeded`, `execution_result` = null
+- `fetch_failures` = {}, `stale_symbols` = [], `circuit_breaker_triggered` = false
+- `run_log.jsonl` 新增一行紀錄
+
+**第二次 `run_once.py` 執行**(2026-07-07T10:41:57Z, 緊接著再跑一次驗證冪等性):
+- BTCUSDT: `risk_decision` = `NoActionNeeded`, `execution_result` = null
+- ETHUSDT: `risk_decision` = `NoActionNeeded`, `execution_result` = null
+- 與第一次結果完全一致, `daily_risk_state.json` 的 `equity_at_day_start_usdt` 未被覆寫改變, 沒有因重複執行而產生非預期的重複下單 — 冪等性確認成立
+- `run_log.jsonl` 新增第二行紀錄(共 2 行)
+
+**誠實列出本次驗證未觸發之規則**: 兩次執行 BTC 與 ETH 皆為「目標倉位與當前倉位相符」的 `NoActionNeeded`, 在 `review_portfolio` 內部只走到「全域每日熔斷檢查」與「逐標的數據異常檢查」這兩關(皆通過, 未觸發), 兩個標的都在「目標倉位比對」這一步就得到 `None`, 完全沒有進入開倉方向的四項檢查. 因此以下規則這次**沒有**被真實觸發過, 只有既有單元測試覆蓋, 尚未有真實 API 下的實測案例:
+- 每日熔斷(circuit breaker) 的「真的超過 4% 觸發拒絕」分支(這次檢查有跑, 但條件為假, 只確認了「不誤觸發」, 沒確認「真觸發時 Telegram 警報與全標的拒絕」的路徑)
+- 數據延遲保護(data staleness) 的「真的過期觸發拒絕」分支(同上, 只確認了「不誤觸發」)
+- 單筆最大虧損上限拒絕
+- 最大同時持倉數拒絕
+- 相關性限制拒絕(含設計文件上方提到的「BTC 與 ETH 同時開倉時 ETH 很可能被相關性擋下」這個預期情境, 這次因為兩者都沒有開倉信號, 完全沒機會驗證)
+- 名目金額上限拒絕(Slice 1 沿用邏輯, 這次也沒被真實觸發)
+- 開倉路徑本身(`OrderEvent` 買進) 與平倉路徑(`OrderEvent` 賣出) 這次都沒有發生 — 兩個標的當下的凍結策略信號與帳戶當前倉位剛好一致, 完全沒有真實下單
+
+這次驗證證明的是: 管線串接無誤(data → signal → risk → execution 兩階段編排跑通兩個標的)、真實帳戶狀態查詢正常、每日狀態檔案建立與讀取正常、Telegram 警報通道本身可用、`NoActionNeeded` 這個最常見情境下的冪等性成立. 尚未證明的是上述所有「拒絕」與「真實下單」路徑在真實環境下的行為 — 這些留待之後真的遇到對應市場條件時的下一次自然驗證, 或視需要另外安排一次有意觸發條件的手動驗證.
