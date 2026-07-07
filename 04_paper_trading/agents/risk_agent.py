@@ -135,49 +135,130 @@ def check_data_staleness(
     return time_since_close <= bar_interval * staleness_multiplier
 
 
-def review(
-    signal_event: SignalEvent,
-    current_base_asset_balance: float,
+SYMBOL_MARKET_TYPES = {"BTCUSDT": "crypto", "ETHUSDT": "crypto"}
+
+
+def review_portfolio(
+    signal_events: dict,
+    stale_symbols: list,
+    current_base_asset_balances: dict,
     account_equity_usdt: float,
+    day_start_equity_usdt: float,
+    close_price_histories: dict,
     engine_parameters: dict,
-) -> OrderEvent | RejectionEvent | None:
+    risk_limits: dict,
+) -> dict:
     """
-    三種結果(不是兩種) :
-    - 目標倉位與當前倉位相同 → None(無需動作)
-    - 不同且在風控上限內 → OrderEvent
-    - 不同但超過風控上限 → RejectionEvent(只可能發生在買進方向, 賣出方向天然受限於實際持倉)
+    對整批標的一次做出風控決策(取代 Slice 1 的單標的 review) , 依序套用 :
+    全域每日熔斷(一次) → 逐標的數據異常 → 逐標的目標倉位比對 → 開倉方向四項檢查
+    (單筆最大虧損, 最大同時持倉數, 相關性限制, 名目金額上限) . 依 SYMBOL_MARKET_TYPES 的固定
+    標的順序處理, 讓「最大同時持倉數」與「相關性限制」的比較基準包含本次批次已核准的開倉,
+    結果因此具決定性(取決於固定順序, 不取決於呼叫端字典的建構順序) , 見設計文件行為後果說明
     """
-    current_position = determine_current_position(
-        current_base_asset_balance, signal_event.latest_close_price
-    )
-    if signal_event.target_position == current_position:
-        return None
+    decisions = {}
+    ordered_symbols = [symbol for symbol in SYMBOL_MARKET_TYPES if symbol in signal_events]
 
-    if signal_event.target_position == 0:
-        # 多單 → 空手: 全部平倉, 不重新跑風險計算(compute_buy_quantity 是進場用的風險換算, 不適用平倉)
-        return OrderEvent(
-            symbol=signal_event.symbol, side="SELL", quantity=current_base_asset_balance
+    circuit_breaker_ok = check_daily_circuit_breaker(
+        account_equity_usdt, day_start_equity_usdt, risk_limits["max_daily_loss_fraction"]
+    )
+    if not circuit_breaker_ok:
+        for symbol in ordered_symbols + list(stale_symbols):
+            decisions[symbol] = RejectionEvent(
+                symbol=symbol, reason="每日虧損熔斷已觸發, 停止當日所有交易"
+            )
+        return decisions
+
+    for symbol in stale_symbols:
+        decisions[symbol] = RejectionEvent(symbol=symbol, reason="數據已過期, 暫停信號生成")
+
+    open_long_symbols = [
+        symbol
+        for symbol in ordered_symbols
+        if determine_current_position(
+            current_base_asset_balances.get(symbol, 0.0),
+            signal_events[symbol].latest_close_price,
+        )
+        == 1
+    ]
+
+    for symbol in ordered_symbols:
+        signal_event = signal_events[symbol]
+        current_position = determine_current_position(
+            current_base_asset_balances.get(symbol, 0.0), signal_event.latest_close_price
+        )
+        if signal_event.target_position == current_position:
+            decisions[symbol] = None
+            continue
+
+        if signal_event.target_position == 0:
+            decisions[symbol] = OrderEvent(
+                symbol=symbol, side="SELL", quantity=current_base_asset_balances.get(symbol, 0.0)
+            )
+            if symbol in open_long_symbols:
+                open_long_symbols.remove(symbol)
+            continue
+
+        buy_quantity = compute_buy_quantity(
+            account_equity_usdt,
+            signal_event.latest_close_price,
+            signal_event.latest_average_true_range,
+            engine_parameters["risk_per_trade_percentage"],
+            engine_parameters["atr_stop_multiplier"],
+            engine_parameters["max_position_fraction"],
         )
 
-    # 空手 → 多單: 用固定風險公式反推買進數量
-    buy_quantity = compute_buy_quantity(
-        account_equity_usdt,
-        signal_event.latest_close_price,
-        signal_event.latest_average_true_range,
-        engine_parameters["risk_per_trade_percentage"],
-        engine_parameters["atr_stop_multiplier"],
-        engine_parameters["max_position_fraction"],
-    )
-    notional_value_usdt = buy_quantity * signal_event.latest_close_price
-    maximum_allowed_notional_usdt = (
-        engine_parameters["initial_capital"] * engine_parameters["max_position_fraction"]
-    )
-    if notional_value_usdt > maximum_allowed_notional_usdt:
-        return RejectionEvent(
-            symbol=signal_event.symbol,
-            reason=(
-                f"買進名目金額 {notional_value_usdt:.2f} USDT 超過風控上限 "
-                f"{maximum_allowed_notional_usdt:.2f} USDT"
-            ),
+        if not check_max_loss_per_trade(
+            buy_quantity,
+            signal_event.latest_average_true_range,
+            engine_parameters["atr_stop_multiplier"],
+            account_equity_usdt,
+            risk_limits["max_loss_per_trade_fraction"],
+        ):
+            decisions[symbol] = RejectionEvent(symbol=symbol, reason="單筆潛在虧損超過風控上限")
+            continue
+
+        market_type = SYMBOL_MARKET_TYPES[symbol]
+        positions_in_same_market_count = sum(
+            1
+            for other_symbol in open_long_symbols
+            if SYMBOL_MARKET_TYPES.get(other_symbol) == market_type
         )
-    return OrderEvent(symbol=signal_event.symbol, side="BUY", quantity=buy_quantity)
+        if not check_max_concurrent_positions(
+            positions_in_same_market_count, market_type, risk_limits["max_positions_by_market"]
+        ):
+            decisions[symbol] = RejectionEvent(
+                symbol=symbol, reason=f"已達 {market_type} 類別最大同時持倉數上限"
+            )
+            continue
+
+        existing_position_close_price_series = {
+            other_symbol: close_price_histories[other_symbol]
+            for other_symbol in open_long_symbols
+            if other_symbol in close_price_histories
+        }
+        if not check_correlation_limit(
+            close_price_histories[symbol],
+            existing_position_close_price_series,
+            risk_limits["max_correlation"],
+        ):
+            decisions[symbol] = RejectionEvent(symbol=symbol, reason="與現有持倉相關係數超過風控上限")
+            continue
+
+        notional_value_usdt = buy_quantity * signal_event.latest_close_price
+        maximum_allowed_notional_usdt = (
+            engine_parameters["initial_capital"] * engine_parameters["max_position_fraction"]
+        )
+        if notional_value_usdt > maximum_allowed_notional_usdt:
+            decisions[symbol] = RejectionEvent(
+                symbol=symbol,
+                reason=(
+                    f"買進名目金額 {notional_value_usdt:.2f} USDT 超過風控上限 "
+                    f"{maximum_allowed_notional_usdt:.2f} USDT"
+                ),
+            )
+            continue
+
+        decisions[symbol] = OrderEvent(symbol=symbol, side="BUY", quantity=buy_quantity)
+        open_long_symbols.append(symbol)
+
+    return decisions

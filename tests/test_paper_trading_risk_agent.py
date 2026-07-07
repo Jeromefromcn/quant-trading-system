@@ -14,12 +14,26 @@ ENGINE_PARAMETERS = {
     "max_position_fraction": 1.0,
 }
 
+RISK_LIMITS = {
+    "max_loss_per_trade_fraction": 0.015,
+    "max_daily_loss_fraction": 0.04,
+    "max_positions_by_market": {"crypto": 3, "stocks": 5},
+    "max_correlation": 0.8,
+}
+
+
+def _make_close_price_series(values):
+    return pd.Series(values, dtype=float)
+
 
 def _make_signal_event(
-    target_position: int, close_price: float = 50_000.0, average_true_range: float = 1_000.0
-) -> SignalEvent:
+    symbol="BTCUSDT",
+    target_position=1,
+    close_price: float = 50_000.0,
+    average_true_range: float = 1_000.0,
+):
     return SignalEvent(
-        symbol="BTCUSDT",
+        symbol=symbol,
         target_position=target_position,
         as_of_timestamp=datetime(2026, 7, 6, tzinfo=timezone.utc),
         latest_close_price=close_price,
@@ -93,46 +107,6 @@ def test_check_max_concurrent_positions_rejects_at_cap():
     assert risk_agent.check_max_concurrent_positions(3, "crypto", {"crypto": 3, "stocks": 5}) is False
 
 
-def test_review_returns_none_when_target_matches_current():
-    signal_event = _make_signal_event(target_position=0)
-
-    result = risk_agent.review(signal_event, 0.0, 10_000.0, ENGINE_PARAMETERS)
-
-    assert result is None
-
-
-def test_review_returns_sell_order_closing_full_position():
-    signal_event = _make_signal_event(target_position=0)
-
-    result = risk_agent.review(signal_event, 0.05, 10_000.0, ENGINE_PARAMETERS)
-
-    assert isinstance(result, OrderEvent)
-    assert result.side == "SELL"
-    assert result.quantity == 0.05
-
-
-def test_review_returns_buy_order_within_risk_cap():
-    signal_event = _make_signal_event(target_position=1, close_price=50_000.0, average_true_range=1_000.0)
-
-    result = risk_agent.review(signal_event, 0.0, 10_000.0, ENGINE_PARAMETERS)
-
-    assert isinstance(result, OrderEvent)
-    assert result.side == "BUY"
-    # 佔比 = 1% * 50000 / (2 * 1000) = 0.25, 部位金額 = 10000 * 0.25 = 2500 USDT, 數量 = 2500/50000 = 0.05
-    assert result.quantity == pytest.approx(0.05)
-
-
-def test_review_rejects_buy_when_notional_exceeds_cap():
-    # 用比較小的 initial_capital 讓風控上限低於算出的買進金額, 觸發 RejectionEvent
-    signal_event = _make_signal_event(target_position=1, close_price=50_000.0, average_true_range=1_000.0)
-    small_cap_engine_parameters = dict(ENGINE_PARAMETERS, initial_capital=1_000.0)
-
-    result = risk_agent.review(signal_event, 0.0, 10_000.0, small_cap_engine_parameters)
-
-    assert isinstance(result, RejectionEvent)
-    assert "超過風控上限" in result.reason
-
-
 def test_check_correlation_limit_passes_when_no_existing_positions():
     candidate_close_prices = pd.Series([100.0, 101.0, 102.0])
     assert risk_agent.check_correlation_limit(candidate_close_prices, {}) is True
@@ -195,3 +169,149 @@ def test_check_data_staleness_rejects_when_beyond_threshold():
     assert risk_agent.check_data_staleness(
         last_candle_open_time, current_time, timedelta(days=1), 1.5
     ) is False
+
+
+def test_review_portfolio_circuit_breaker_rejects_all_symbols():
+    signal_events = {
+        "BTCUSDT": _make_signal_event("BTCUSDT", target_position=1),
+        "ETHUSDT": _make_signal_event("ETHUSDT", target_position=0),
+    }
+
+    decisions = risk_agent.review_portfolio(
+        signal_events, [], {}, 9_500.0, 10_000.0, {}, ENGINE_PARAMETERS, RISK_LIMITS
+    )
+
+    assert isinstance(decisions["BTCUSDT"], RejectionEvent)
+    assert "熔斷" in decisions["BTCUSDT"].reason
+    assert isinstance(decisions["ETHUSDT"], RejectionEvent)
+    assert "熔斷" in decisions["ETHUSDT"].reason
+
+
+def test_review_portfolio_marks_stale_symbol_as_rejected_and_other_proceeds():
+    signal_events = {"BTCUSDT": _make_signal_event("BTCUSDT", target_position=0)}
+
+    decisions = risk_agent.review_portfolio(
+        signal_events, ["ETHUSDT"], {}, 10_000.0, 10_000.0, {}, ENGINE_PARAMETERS, RISK_LIMITS
+    )
+
+    assert isinstance(decisions["ETHUSDT"], RejectionEvent)
+    assert "過期" in decisions["ETHUSDT"].reason
+    assert decisions["BTCUSDT"] is None
+
+
+def test_review_portfolio_returns_sell_order_closing_full_position():
+    signal_events = {"BTCUSDT": _make_signal_event("BTCUSDT", target_position=0)}
+
+    decisions = risk_agent.review_portfolio(
+        signal_events, [], {"BTCUSDT": 0.05}, 10_000.0, 10_000.0, {}, ENGINE_PARAMETERS, RISK_LIMITS
+    )
+
+    assert isinstance(decisions["BTCUSDT"], OrderEvent)
+    assert decisions["BTCUSDT"].side == "SELL"
+    assert decisions["BTCUSDT"].quantity == 0.05
+
+
+def test_review_portfolio_approves_buy_when_alone_and_within_limits():
+    signal_events = {
+        "BTCUSDT": _make_signal_event(
+            "BTCUSDT", target_position=1, close_price=50_000.0, average_true_range=1_000.0
+        )
+    }
+    close_price_histories = {
+        "BTCUSDT": _make_close_price_series([50_000.0 + index * 100 for index in range(30)])
+    }
+
+    decisions = risk_agent.review_portfolio(
+        signal_events, [], {}, 10_000.0, 10_000.0, close_price_histories, ENGINE_PARAMETERS, RISK_LIMITS
+    )
+
+    assert isinstance(decisions["BTCUSDT"], OrderEvent)
+    assert decisions["BTCUSDT"].side == "BUY"
+    assert decisions["BTCUSDT"].quantity == pytest.approx(0.05)
+
+
+def test_review_portfolio_rejects_second_correlated_open_in_same_batch():
+    btc_close_prices = _make_close_price_series([50_000.0 + index * 100 for index in range(30)])
+    eth_close_prices = btc_close_prices * 2.0  # 純比例縮放, 相關係數必為 1.0
+    signal_events = {
+        "BTCUSDT": _make_signal_event(
+            "BTCUSDT", target_position=1, close_price=50_000.0, average_true_range=1_000.0
+        ),
+        "ETHUSDT": _make_signal_event(
+            "ETHUSDT", target_position=1, close_price=3_000.0, average_true_range=100.0
+        ),
+    }
+    close_price_histories = {"BTCUSDT": btc_close_prices, "ETHUSDT": eth_close_prices}
+
+    decisions = risk_agent.review_portfolio(
+        signal_events, [], {}, 10_000.0, 10_000.0, close_price_histories, ENGINE_PARAMETERS, RISK_LIMITS
+    )
+
+    assert isinstance(decisions["BTCUSDT"], OrderEvent)  # 依固定順序先處理, 當時尚無現有持倉可比較
+    assert isinstance(decisions["ETHUSDT"], RejectionEvent)
+    assert "相關係數" in decisions["ETHUSDT"].reason
+
+
+def test_review_portfolio_rejects_buy_when_max_loss_per_trade_exceeded():
+    signal_events = {
+        "BTCUSDT": _make_signal_event(
+            "BTCUSDT", target_position=1, close_price=50_000.0, average_true_range=1_000.0
+        )
+    }
+    close_price_histories = {
+        "BTCUSDT": _make_close_price_series([50_000.0 + index * 100 for index in range(30)])
+    }
+    strict_risk_limits = dict(RISK_LIMITS, max_loss_per_trade_fraction=0.005)
+
+    decisions = risk_agent.review_portfolio(
+        signal_events, [], {}, 10_000.0, 10_000.0, close_price_histories, ENGINE_PARAMETERS, strict_risk_limits
+    )
+
+    assert isinstance(decisions["BTCUSDT"], RejectionEvent)
+    assert "潛在虧損" in decisions["BTCUSDT"].reason
+
+
+def test_review_portfolio_rejects_buy_when_max_concurrent_positions_reached():
+    signal_events = {
+        "BTCUSDT": _make_signal_event(
+            "BTCUSDT", target_position=1, close_price=50_000.0, average_true_range=1_000.0
+        ),
+        "ETHUSDT": _make_signal_event(
+            "ETHUSDT", target_position=1, close_price=3_000.0, average_true_range=100.0
+        ),
+    }
+    current_base_asset_balances = {"BTCUSDT": 0.05}  # 市值 2500 USDT, 已是真實持倉
+    close_price_histories = {
+        "BTCUSDT": _make_close_price_series([50_000.0 + index * 100 for index in range(30)]),
+        "ETHUSDT": _make_close_price_series([3_000.0 + index * 10 for index in range(30)]),
+    }
+    strict_risk_limits = dict(RISK_LIMITS, max_positions_by_market={"crypto": 1, "stocks": 5})
+
+    decisions = risk_agent.review_portfolio(
+        signal_events, [], current_base_asset_balances, 12_500.0, 12_500.0,
+        close_price_histories, ENGINE_PARAMETERS, strict_risk_limits,
+    )
+
+    assert decisions["BTCUSDT"] is None  # 已是多單, 目標與當前相同
+    assert isinstance(decisions["ETHUSDT"], RejectionEvent)
+    assert "持倉數" in decisions["ETHUSDT"].reason
+
+
+def test_review_portfolio_rejects_buy_when_notional_exceeds_cap():
+    signal_events = {
+        "BTCUSDT": _make_signal_event(
+            "BTCUSDT", target_position=1, close_price=50_000.0, average_true_range=1_000.0
+        )
+    }
+    close_price_histories = {
+        "BTCUSDT": _make_close_price_series([50_000.0 + index * 100 for index in range(30)])
+    }
+    small_cap_engine_parameters = dict(ENGINE_PARAMETERS, initial_capital=1_000.0)
+
+    decisions = risk_agent.review_portfolio(
+        signal_events, [], {}, 10_000.0, 10_000.0,
+        close_price_histories, small_cap_engine_parameters, RISK_LIMITS,
+    )
+
+    assert isinstance(decisions["BTCUSDT"], RejectionEvent)
+    assert "超過風控上限" in decisions["BTCUSDT"].reason
