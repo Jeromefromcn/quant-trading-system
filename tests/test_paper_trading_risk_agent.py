@@ -252,6 +252,30 @@ def test_review_portfolio_rejects_second_correlated_open_in_same_batch():
     assert "相關係數" in decisions["ETHUSDT"].reason
 
 
+def test_review_portfolio_processes_symbols_in_symbol_market_types_order_not_dict_order():
+    btc_close_prices = _make_close_price_series([50_000.0 + index * 100 for index in range(30)])
+    eth_close_prices = btc_close_prices * 2.0  # 純比例縮放, 相關係數必為 1.0
+    # 刻意以 ETHUSDT 在前, BTCUSDT 在後的順序建構字典, 證明處理順序取決於 SYMBOL_MARKET_TYPES,
+    # 不受呼叫端字典的建構順序影響
+    signal_events = {
+        "ETHUSDT": _make_signal_event(
+            "ETHUSDT", target_position=1, close_price=3_000.0, average_true_range=100.0
+        ),
+        "BTCUSDT": _make_signal_event(
+            "BTCUSDT", target_position=1, close_price=50_000.0, average_true_range=1_000.0
+        ),
+    }
+    close_price_histories = {"BTCUSDT": btc_close_prices, "ETHUSDT": eth_close_prices}
+
+    decisions = risk_agent.review_portfolio(
+        signal_events, [], {}, 10_000.0, 10_000.0, close_price_histories, ENGINE_PARAMETERS, RISK_LIMITS
+    )
+
+    assert isinstance(decisions["BTCUSDT"], OrderEvent)  # 仍依 SYMBOL_MARKET_TYPES 順序先處理 BTC
+    assert isinstance(decisions["ETHUSDT"], RejectionEvent)
+    assert "相關係數" in decisions["ETHUSDT"].reason
+
+
 def test_review_portfolio_rejects_buy_when_max_loss_per_trade_exceeded():
     signal_events = {
         "BTCUSDT": _make_signal_event(

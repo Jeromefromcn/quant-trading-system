@@ -47,3 +47,23 @@ def test_send_alert_does_not_raise_when_api_returns_non_200(monkeypatch):
     )
 
     telegram_alerts.send_alert("測試訊息")  # 不應拋出例外
+
+
+def test_send_alert_scrubs_bot_token_from_network_exception_message(monkeypatch, capsys):
+    # 網路例外字串常含請求網址, 網址內嵌 bot_token, 印出前必須遮蔽, 否則真實憑證會外洩到終端機
+    real_token = "123456789:AAFAKE_SECRET_BOT_TOKEN_xyz"
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", real_token)
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", "fake-chat-id")
+
+    def _raise_network_error_with_url(url, json, timeout):
+        raise telegram_alerts.requests.exceptions.ConnectionError(
+            f"Max retries exceeded with url: /bot{real_token}/sendMessage"
+        )
+
+    monkeypatch.setattr(telegram_alerts.requests, "post", _raise_network_error_with_url)
+
+    telegram_alerts.send_alert("測試訊息")
+
+    printed_output = capsys.readouterr().out
+    assert real_token not in printed_output
+    assert "***" in printed_output

@@ -35,4 +35,6 @@ def send_alert(message: str) -> None:
         if response.status_code != 200:
             print(f"Telegram 警報發送失敗, HTTP {response.status_code}: {response.text}")
     except requests.exceptions.RequestException as network_error:
-        print(f"Telegram 警報發送時發生網路例外: {network_error}, 原始訊息: {message}")
+        # 例外字串可能含有下單網址, 網址內嵌 bot_token, 印出前先遮蔽, 避免真實憑證外洩到終端機/日誌
+        sanitized_error_message = str(network_error).replace(bot_token, "***")
+        print(f"Telegram 警報發送時發生網路例外: {sanitized_error_message}, 原始訊息: {message}")
