@@ -183,23 +183,23 @@
 
 - [x] `data_agent.py`: REST 輪詢(polling) 拉取最新 K 線 → 標準化 OHLCV DataFrame(Slice 1 改用輪詢, 不用 WebSocket; exp_002 策略以日線決策, 不需要次秒級數據, 見 `docs/superpowers/specs/2026-07-06-phase3-paper-trading-slice1-design.md`)
 - [x] `signal_agent.py`: 在最新數據上運行凍結的 exp_002 策略 → SignalEvent(目標倉位, 標的, 收盤價, ATR)
-- [x] `risk_agent.py`: 比對目標倉位與當前倉位, 套用倉位大小上限檢查 → OrderEvent, RejectionEvent 或 None(完整風控規則留待後續切片)
+- [x] `risk_agent.py`: 比對目標倉位與當前倉位, 套用倉位大小上限檢查 → OrderEvent, RejectionEvent 或 None(完整風控規則已於 Slice 2 實作, 見下方)
 - [x] `execution_agent.py`: 對 Binance Testnet 執行真實市價單, 記錄結果 → FillEvent 或 FailEvent(報警留待監控切片)
 
 ### 風控 Agent 硬性規則實現
 
-- [ ] 單筆最大虧損: 賬戶的 1.5%, 超過直接拒絕
-- [ ] 每日最大虧損熔斷: 當日累計虧損 > 4% → 停止當日所有交易, 發 Telegram 報警
-- [ ] 最大同時持倉數: 加密貨幣 3 個, 美股 5 個
-- [ ] 相關性限制: 新倉與現有持倉相關係數 > 0.8 時拒絕開新倉
-- [ ] 數據異常保護: 數據超過 15 分鐘未更新 → 暫停信號生成, 發報警
+- [x] 單筆最大虧損: 賬戶的 1.5%, 超過直接拒絕(`check_max_loss_per_trade`, 見 Slice 2 設計文件)
+- [x] 每日最大虧損熔斷: 當日累計虧損 > 4% → 停止當日所有交易, 發 Telegram 報警(`check_daily_circuit_breaker` + `telegram_alerts.py`)
+- [x] 最大同時持倉數: 加密貨幣 3 個, 美股 5 個(`check_max_concurrent_positions`; 本切片僅 BTC/ETH 兩個標的, 上限 3 尚未被真實觸及, 美股上限尚無標的可用)
+- [x] 相關性限制: 新倉與現有持倉相關係數 > 0.8 時拒絕開新倉(`check_correlation_limit`)
+- [x] 數據異常保護: 改為以 K 線週期的 1.5 倍為門檻(而非原文固定 15 分鐘, 對日線策略不適用, 見 Slice 2 設計文件說明)(`check_data_staleness`)
 
 ### 調度與通知
 
 - [ ] `scheduler.py`: 加密貨幣每 4 小時一次(00:00 / 04:00 / 08:00 / 12:00 / 16:00 / 20:00 UTC)
 - [ ] `scheduler.py`: 美股每個交易日一次(美東 16:30 收盤後計算信號, 次日開盤前 30 分鐘掛限價單)
 - [ ] `monitor.py`: 每日自動生成報告並發送 Telegram(含信號, 執行結果, 持倉, 帳戶摘要, 系統健康)
-- [ ] 配置 Telegram Bot Token 和 Chat ID(`.env` 中, 不入 Git)
+- [x] 配置 Telegram Bot Token 和 Chat ID(`.env` 中, 不入 Git; 已於 Slice 2 接上真實警報, `scheduler.py` / `monitor.py` 每日報告仍留待後續切片)
 
 ### 風控規則驗證
 
