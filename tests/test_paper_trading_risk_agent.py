@@ -163,6 +163,15 @@ def test_check_correlation_limit_rejects_when_insufficient_overlap():
     ) is False
 
 
+def test_check_correlation_limit_rejects_when_correlation_is_nan():
+    # existing 持倉價格完全不變, 報酬率全為 0, 變異數為 0, 相關係數無法定義(NaN), 視為無法確認風險應拒絕
+    candidate_close_prices = pd.Series([100.0, 102.0, 99.0, 105.0])
+    existing_close_prices = pd.Series([100.0, 100.0, 100.0, 100.0])
+    assert risk_agent.check_correlation_limit(
+        candidate_close_prices, {"ETHUSDT": existing_close_prices}, max_correlation=0.8
+    ) is False
+
+
 def test_check_data_staleness_passes_when_within_threshold():
     current_time = datetime(2026, 7, 6, 12, 0, tzinfo=timezone.utc)
     last_candle_open_time = datetime(2026, 7, 5, 12, 0, tzinfo=timezone.utc)  # 24 小時前開盤
