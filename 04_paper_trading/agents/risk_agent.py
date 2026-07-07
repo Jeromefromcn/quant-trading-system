@@ -7,6 +7,7 @@ import os
 import sys
 from datetime import datetime, timedelta
 
+import numpy as np
 import pandas as pd
 
 _agents_directory = os.path.dirname(os.path.abspath(__file__))
@@ -110,7 +111,8 @@ def check_correlation_limit(
         aligned_existing_returns = existing_returns.iloc[-overlapping_length:].reset_index(
             drop=True
         )
-        correlation = aligned_candidate_returns.corr(aligned_existing_returns)
+        with np.errstate(invalid="ignore", divide="ignore"):
+            correlation = aligned_candidate_returns.corr(aligned_existing_returns)
         if pd.isna(correlation) or correlation > max_correlation:
             return False
     return True
