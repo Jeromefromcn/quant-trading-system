@@ -36,7 +36,7 @@ def _load_records_for_date(log_file_path: str, target_date: date) -> list[dict]:
             try:
                 record = json.loads(line)
                 run_started_at = datetime.fromisoformat(record["run_started_at"])
-            except (json.JSONDecodeError, KeyError, ValueError) as parse_error:
+            except (json.JSONDecodeError, KeyError, ValueError, TypeError) as parse_error:
                 print(f"略過無法解析的第 {line_number} 行: {parse_error}", file=sys.stderr)
                 continue
             if run_started_at.astimezone(timezone.utc).date() == target_date:

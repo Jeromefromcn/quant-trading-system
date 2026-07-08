@@ -29,6 +29,19 @@ def test_load_records_for_date_returns_empty_list_when_file_missing(tmp_path):
     assert records == []
 
 
+def test_load_records_for_date_skips_valid_json_that_is_not_a_dict(tmp_path):
+    log_file_path = str(tmp_path / "run_log.jsonl")
+    valid_record = {"run_started_at": "2026-07-08T00:00:01+00:00", "marker": "today"}
+    with open(log_file_path, "w", encoding="utf-8") as log_file:
+        log_file.write(json.dumps(None) + "\n")
+        log_file.write(json.dumps(valid_record) + "\n")
+
+    records = monitor._load_records_for_date(log_file_path, date(2026, 7, 8))
+
+    assert len(records) == 1
+    assert records[0]["marker"] == "today"
+
+
 def test_format_daily_report_reports_no_records_when_empty():
     report = monitor._format_daily_report([], date(2026, 7, 8))
 
