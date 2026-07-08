@@ -504,14 +504,47 @@ def test_format_daily_report_shows_no_positions_when_all_zero():
     report = monitor._format_daily_report(records, date(2026, 7, 8))
 
     assert "目前無持倉" in report
+
+
+def test_format_daily_report_skips_stale_symbol_missing_signal_and_balance():
+    records = [
+        {
+            "run_started_at": "2026-07-08T20:00:00+00:00",
+            "account_equity_usdt": 10000.0,
+            "day_start_equity_usdt": 10000.0,
+            "stale_symbols": {"BTCUSDT": {"time_since_close_seconds": 999, "threshold_seconds": 129600}},
+            "circuit_breaker_triggered": False,
+            "symbols": {
+                "BTCUSDT": {
+                    "risk_decision": {
+                        "type": "RejectionEvent", "reason": "data_staleness",
+                        "computed_value": None, "limit_value": None,
+                    },
+                    "execution_result": None,
+                },
+                "ETHUSDT": {
+                    "risk_decision": {"type": "NoActionNeeded"},
+                    "execution_result": None,
+                    "current_base_asset_balance": 0.02,
+                    "signal": {"latest_close_price": 3500.0},
+                },
+            },
+        },
+    ]
+
+    report = monitor._format_daily_report(records, date(2026, 7, 8))
+
+    assert "ETHUSDT: 0.02 (約 70.00 USDT)" in report
 ```
+
+`BTCUSDT` above is a stale symbol : `run_once.py` only writes the `signal` and `current_base_asset_balance` keys for a symbol when it is present in `signal_events`(see `run_once.py:150-159`), and a stale symbol never reaches that point(see `run_once.py:100`, the staleness check `continue`s before `signal_agent.decide` is called). So `symbol_record` for a stale symbol only ever has `risk_decision` and `execution_result` : the position section must not assume every symbol in `records[-1]["symbols"]` has `current_base_asset_balance` or `signal`.
 
 - [ ] **Step 18: 執行測試確認失敗(持倉明細段尚未實作)**
 
 Run: `cd /home/ubuntu/jerome/quant-trading-system && python3 -m pytest tests/test_paper_trading_monitor.py -v`
 Expected: FAIL : 斷言的持倉文字不存在於回傳字串中
 
-- [ ] **Step 19: 實作持倉明細段, 讓 Step 17 測試通過**
+- [ ] **Step 19: 實作持倉明細段, 讓 Step 17 測試通過(含 Step 17 新增的 stale-symbol 測試, 見上方說明: `current_base_asset_balance` 不保證存在, 需先檢查 key 是否存在再讀取)**
 
 Modify the `return` statement of `_format_daily_report` in `04_paper_trading/monitor.py`:
 
@@ -519,6 +552,8 @@ Modify the `return` statement of `_format_daily_report` in `04_paper_trading/mon
     latest_symbols = records[-1]["symbols"]
     position_lines = []
     for symbol, symbol_record in latest_symbols.items():
+        if "current_base_asset_balance" not in symbol_record:
+            continue
         balance = symbol_record["current_base_asset_balance"]
         if balance != 0:
             latest_close_price = symbol_record["signal"]["latest_close_price"]
@@ -533,7 +568,7 @@ Modify the `return` statement of `_format_daily_report` in `04_paper_trading/mon
 - [ ] **Step 20: 執行測試確認通過**
 
 Run: `cd /home/ubuntu/jerome/quant-trading-system && python3 -m pytest tests/test_paper_trading_monitor.py -v`
-Expected: PASS(8 passed)
+Expected: PASS(9 passed)
 
 - [ ] **Step 21: 寫失敗測試 : 系統健康段統計數據異常與熔斷觸發次數**
 
@@ -594,7 +629,7 @@ Modify the `return` statement of `_format_daily_report` in `04_paper_trading/mon
 - [ ] **Step 24: 執行全部測試確認通過**
 
 Run: `cd /home/ubuntu/jerome/quant-trading-system && python3 -m pytest tests/test_paper_trading_monitor.py -v`
-Expected: PASS(9 passed)
+Expected: PASS(11 passed)
 
 - [ ] **Step 25: Commit**
 
@@ -686,7 +721,7 @@ if __name__ == "__main__":
 - [ ] **Step 4: 執行測試確認通過**
 
 Run: `cd /home/ubuntu/jerome/quant-trading-system && python3 -m pytest tests/test_paper_trading_monitor.py -v`
-Expected: PASS(10 passed)
+Expected: PASS(11 passed)
 
 - [ ] **Step 5: 執行整個專案測試套件, 確認沒有破壞既有測試**
 
@@ -714,7 +749,7 @@ git commit -m "feat: add main() to send daily paper trading report via Telegram"
 - [ ] **Step 1: 確認 Task 1-3 的自動化測試全數通過(前置條件)**
 
 Run: `cd /home/ubuntu/jerome/quant-trading-system && python3 -m pytest tests/test_paper_trading_monitor.py -v`
-Expected: PASS(10 passed)
+Expected: PASS(11 passed)
 
 - [ ] **Step 2: 手動執行一次驗證(會真的呼叫 Telegram; 若當日 `run_log.jsonl` 尚無前一 UTC 日曆天的紀錄, 預期送出內容為當日無任何執行紀錄, 屬正常情況)**
 
