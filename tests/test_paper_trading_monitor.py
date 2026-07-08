@@ -1,6 +1,6 @@
 """monitor.py 的每日報告測試 : 讀檔/日期過濾用 tmp_path, 格式化與發送用手造資料或 mock"""
 import json
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 
 import pytest
 
@@ -276,3 +276,30 @@ def test_format_daily_report_counts_staleness_and_circuit_breaker_triggers():
 
     assert "數據異常保護觸發 1 次" in report
     assert "每日熔斷觸發 1 次" in report
+
+
+def test_main_loads_formats_and_sends_report_for_previous_utc_day(monkeypatch):
+    captured = {}
+
+    def _fake_load_records_for_date(log_file_path, target_date):
+        captured["log_file_path"] = log_file_path
+        captured["target_date"] = target_date
+        return [{"marker": "fake_record"}]
+
+    def _fake_format_daily_report(records, target_date):
+        captured["records"] = records
+        captured["format_target_date"] = target_date
+        return "格式化後的報告文字"
+
+    sent_messages = []
+    monkeypatch.setattr(monitor, "_load_records_for_date", _fake_load_records_for_date)
+    monkeypatch.setattr(monitor, "_format_daily_report", _fake_format_daily_report)
+    monkeypatch.setattr(monitor.telegram_alerts, "send_alert", lambda message: sent_messages.append(message))
+
+    monitor.main()
+
+    expected_target_date = (datetime.now(timezone.utc) - timedelta(days=1)).date()
+    assert captured["target_date"] == expected_target_date
+    assert captured["format_target_date"] == expected_target_date
+    assert captured["records"] == [{"marker": "fake_record"}]
+    assert sent_messages == ["格式化後的報告文字"]

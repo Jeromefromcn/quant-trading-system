@@ -107,3 +107,15 @@ def _format_daily_report(records: list[dict], target_date: date) -> str:
             "", "持倉:", position_section, "", health_line,
         ]
     )
+
+
+def main() -> None:
+    target_date = (datetime.now(timezone.utc) - timedelta(days=1)).date()
+    records = _load_records_for_date(LOG_FILE_PATH, target_date)
+    report = _format_daily_report(records, target_date)
+    telegram_alerts.send_alert(report)
+    print(f"每日報告已發送 ({target_date.isoformat()} UTC), 涵蓋 {len(records)} 筆執行紀錄")
+
+
+if __name__ == "__main__":
+    main()
