@@ -33,6 +33,21 @@ def _compute_average_fill_price(order_status_response: dict) -> float:
     return cumulative_quote_quantity / executed_quantity
 
 
+def _compute_total_commission(order_status_response: dict) -> tuple[float, str]:
+    """
+    加總成交回應 fills 陣列裡每筆的 commission, 回傳 (加總後手續費, 手續費計價資產) .
+    已知簡化 : 假設同一筆訂單裡所有 fills 的 commissionAsset 一致(實務上單一訂單極少見混用計價
+    資產), 直接取第一筆 fill 的 commissionAsset, 不逐筆比對是否一致. fills 陣列不存在或為空時
+    回傳 (0.0, "")
+    """
+    fills = order_status_response.get("fills", [])
+    if not fills:
+        return 0.0, ""
+    total_commission = sum(float(fill["commission"]) for fill in fills)
+    commission_asset = fills[0]["commissionAsset"]
+    return total_commission, commission_asset
+
+
 def execute(order_event: OrderEvent, symbol_filters: dict) -> FillEvent | FailEvent:
     """
     下真實市價單並確認成交; symbol_filters 來自 binance_testnet_client.get_symbol_filters,
@@ -74,12 +89,15 @@ def execute(order_event: OrderEvent, symbol_filters: dict) -> FillEvent | FailEv
     for attempt_index in range(MAXIMUM_STATUS_POLL_ATTEMPTS + 1):
         current_status = order_status_response.get("status")
         if current_status == "FILLED":
+            total_commission, commission_asset = _compute_total_commission(order_status_response)
             return FillEvent(
                 symbol=order_event.symbol,
                 side=order_event.side,
                 quantity=float(order_status_response["executedQty"]),
                 average_price=_compute_average_fill_price(order_status_response),
                 order_id=str(order_id),
+                commission=total_commission,
+                commission_asset=commission_asset,
             )
         if current_status in TERMINAL_FAILURE_STATUSES:
             return FailEvent(

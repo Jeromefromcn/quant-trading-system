@@ -1,4 +1,5 @@
 """execution_agent.execute 的單元測試 — monkeypatch 掉 binance_testnet_client 的真實網路呼叫"""
+import pytest
 import requests
 
 import execution_agent
@@ -195,3 +196,52 @@ def test_execute_continues_polling_when_get_order_status_raises_network_exceptio
     result = execution_agent.execute(order_event, SYMBOL_FILTERS)
 
     assert isinstance(result, FillEvent)
+
+
+def test_execute_computes_total_commission_from_fills(monkeypatch):
+    order_event = OrderEvent(symbol="BTCUSDT", side="BUY", quantity=0.05)
+    monkeypatch.setattr(
+        execution_agent,
+        "place_market_order",
+        lambda symbol, side, quantity: (
+            200,
+            {
+                "orderId": 123,
+                "status": "FILLED",
+                "executedQty": "0.0500",
+                "cummulativeQuoteQty": "2500.00",
+                "fills": [
+                    {"price": "50000.00", "qty": "0.0300", "commission": "1.500", "commissionAsset": "USDT"},
+                    {"price": "50000.00", "qty": "0.0200", "commission": "1.000", "commissionAsset": "USDT"},
+                ],
+            },
+        ),
+    )
+
+    result = execution_agent.execute(order_event, SYMBOL_FILTERS)
+
+    assert isinstance(result, FillEvent)
+    assert result.commission == pytest.approx(2.5)
+    assert result.commission_asset == "USDT"
+
+
+def test_execute_defaults_commission_to_zero_when_fills_missing(monkeypatch):
+    order_event = OrderEvent(symbol="BTCUSDT", side="BUY", quantity=0.05)
+    monkeypatch.setattr(
+        execution_agent,
+        "place_market_order",
+        lambda symbol, side, quantity: (
+            200,
+            {
+                "orderId": 123,
+                "status": "FILLED",
+                "executedQty": "0.0500",
+                "cummulativeQuoteQty": "2500.00",
+            },
+        ),
+    )
+
+    result = execution_agent.execute(order_event, SYMBOL_FILTERS)
+
+    assert result.commission == 0.0
+    assert result.commission_asset == ""
