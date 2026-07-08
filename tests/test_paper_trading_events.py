@@ -39,3 +39,34 @@ def test_fill_event_holds_all_fields():
 def test_fail_event_holds_all_fields():
     fail_event = FailEvent(symbol="BTCUSDT", reason="狀態不明", raw_exchange_response="{}")
     assert fail_event.reason == "狀態不明"
+
+
+def test_rejection_event_defaults_computed_value_and_limit_value_to_none():
+    rejection_event = RejectionEvent(symbol="BTCUSDT", reason="超過風控上限")
+    assert rejection_event.computed_value is None
+    assert rejection_event.limit_value is None
+
+
+def test_rejection_event_holds_computed_value_and_limit_value_when_provided():
+    rejection_event = RejectionEvent(
+        symbol="BTCUSDT", reason="超過風控上限", computed_value=0.85, limit_value=0.8
+    )
+    assert rejection_event.computed_value == 0.85
+    assert rejection_event.limit_value == 0.8
+
+
+def test_fill_event_defaults_commission_to_zero():
+    fill_event = FillEvent(
+        symbol="BTCUSDT", side="BUY", quantity=0.01, average_price=50000.0, order_id="123"
+    )
+    assert fill_event.commission == 0.0
+    assert fill_event.commission_asset == ""
+
+
+def test_fill_event_holds_commission_when_provided():
+    fill_event = FillEvent(
+        symbol="BTCUSDT", side="BUY", quantity=0.01, average_price=50000.0, order_id="123",
+        commission=1.25, commission_asset="USDT",
+    )
+    assert fill_event.commission == 1.25
+    assert fill_event.commission_asset == "USDT"

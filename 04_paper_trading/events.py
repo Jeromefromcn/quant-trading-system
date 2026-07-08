@@ -32,6 +32,8 @@ class RejectionEvent:
 
     symbol: str
     reason: str
+    computed_value: float | None = None  # 觸發拒絕當下的實際計算值, 與 reason 描述的是同一種單位
+    limit_value: float | None = None  # 對應的風控上限值, 與 computed_value 同單位
 
 
 @dataclass
@@ -43,6 +45,8 @@ class FillEvent:
     quantity: float
     average_price: float
     order_id: str
+    commission: float = 0.0  # 這筆訂單的總手續費, 從成交回應的 fills 陣列加總而得
+    commission_asset: str = ""  # 手續費計價資產(例如 "USDT" 或 "BNB")
 
 
 @dataclass
