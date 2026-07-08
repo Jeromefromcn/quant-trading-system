@@ -39,3 +39,49 @@ def test_run_scheduled_raises_when_lock_already_held(tmp_path, monkeypatch):
         assert was_called["called"] is False
     finally:
         holder_file.close()
+
+
+def test_main_exits_zero_without_alert_when_successful(monkeypatch):
+    monkeypatch.setattr(
+        scheduler, "run_scheduled", lambda lock_file_path: {"symbols": {"BTCUSDT": {}}}
+    )
+    alerts = []
+    monkeypatch.setattr(scheduler.telegram_alerts, "send_alert", lambda message: alerts.append(message))
+
+    with pytest.raises(SystemExit) as exit_info:
+        scheduler.main()
+
+    assert exit_info.value.code == 0
+    assert alerts == []
+
+
+def test_main_sends_alert_and_exits_zero_when_locked(monkeypatch):
+    def _raise_locked(lock_file_path):
+        raise scheduler.SchedulerLockedError("鎖仍被持有")
+
+    monkeypatch.setattr(scheduler, "run_scheduled", _raise_locked)
+    alerts = []
+    monkeypatch.setattr(scheduler.telegram_alerts, "send_alert", lambda message: alerts.append(message))
+
+    with pytest.raises(SystemExit) as exit_info:
+        scheduler.main()
+
+    assert exit_info.value.code == 0
+    assert len(alerts) == 1
+    assert "尚未結束" in alerts[0]
+
+
+def test_main_sends_alert_and_exits_one_when_run_once_raises(monkeypatch):
+    def _raise_unexpected(lock_file_path):
+        raise RuntimeError("模擬 API 無回應")
+
+    monkeypatch.setattr(scheduler, "run_scheduled", _raise_unexpected)
+    alerts = []
+    monkeypatch.setattr(scheduler.telegram_alerts, "send_alert", lambda message: alerts.append(message))
+
+    with pytest.raises(SystemExit) as exit_info:
+        scheduler.main()
+
+    assert exit_info.value.code == 1
+    assert len(alerts) == 1
+    assert "模擬 API 無回應" in alerts[0]

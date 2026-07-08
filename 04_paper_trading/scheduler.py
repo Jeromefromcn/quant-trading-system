@@ -38,3 +38,22 @@ def run_scheduled(lock_file_path: str) -> dict:
         lock_file.close()
         raise SchedulerLockedError(f"排程鎖 {lock_file_path} 已被持有, 上一次執行可能尚未結束")
     return run_once.run_once()
+
+
+def main() -> None:
+    try:
+        record = run_scheduled(SCHEDULER_LOCK_PATH)
+    except SchedulerLockedError as locked_error:
+        telegram_alerts.send_alert("排程跳過: 上一次執行尚未結束")
+        print(str(locked_error), file=sys.stderr)
+        sys.exit(0)
+    except Exception as error:
+        telegram_alerts.send_alert(f"排程執行失敗: {error}")
+        traceback.print_exc()
+        sys.exit(1)
+    print(f"排程執行完成, 處理標的數: {len(record['symbols'])}")
+    sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()
