@@ -5,7 +5,7 @@
 
 ## 背景 (background)
 
-`04_paper_trading/scheduler.py` 已能每 4 小時無人值守執行一次 `run_once.run_once()`, 並在「排程鎖已被持有」與「執行拋出未預期例外」這兩種異常情況下發 Telegram 警報, 詳見 `docs/superpowers/specs/2026-07-08-phase3-paper-trading-scheduler-design.md`. 但正常完成的執行目前完全靜默 —— 使用者要知道某次排程有沒有交易、交易結果如何, 只能自己去讀 `logs/run_log.jsonl`. 使用者希望每次排程執行完後主動收到一則 Telegram 訊息, 告知本次有沒有交易、以及本次交易的人類可讀摘要, 並且能用開關關閉這則通知(不影響既有的熔斷/數據異常/失敗告警) .
+`04_paper_trading/scheduler.py` 已能每 4 小時無人值守執行一次 `run_once.run_once()`, 並在排程鎖已被持有與執行拋出未預期例外這兩種異常情況下發 Telegram 警報, 詳見 `docs/superpowers/specs/2026-07-08-phase3-paper-trading-scheduler-design.md`. 但正常完成的執行目前完全靜默 : 使用者要知道某次排程有沒有交易, 交易結果如何, 只能自己去讀 `logs/run_log.jsonl`. 使用者希望每次排程執行完後主動收到一則 Telegram 訊息, 告知本次有沒有交易, 以及本次交易的人類可讀摘要, 並且能用開關關閉這則通知(不影響既有的熔斷/數據異常/失敗告警) .
 
 ## 目標與範圍 (goal and scope)
 
@@ -20,9 +20,9 @@
 
 **明確排除** :
 
-- `fetch_failures` / `stale_symbols` / `circuit_breaker_triggered` 不放進這則摘要訊息 —— 這些已有各自獨立的 Telegram 告警路徑(見 `run_once.py` 既有邏輯) , 保持關注點分離, 不重複通知
+- `fetch_failures` / `stale_symbols` / `circuit_breaker_triggered` 不放進這則摘要訊息 : 這些已有各自獨立的 Telegram 告警路徑(見 `run_once.py` 既有邏輯) , 保持關注點分離, 不重複通知
 - 不改動 `run_once.py` 的 `record` 結構, 只在 `scheduler.py` 這一層做格式轉換
-- 不做訊息長度截斷或分頁 —— 目前固定只有 2 個標的(`BTCUSDT` / `ETHUSDT`) , 訊息長度遠低於 Telegram 4096 字元上限, YAGNI
+- 不做訊息長度截斷或分頁 : 目前固定只有 2 個標的(`BTCUSDT` / `ETHUSDT`) , 訊息長度遠低於 Telegram 4096 字元上限, YAGNI
 
 ## 元件 (components)
 
@@ -32,12 +32,12 @@
 - 新函式 `_format_run_summary(record: dict) -> str` :
   - 標頭行 : `Paper trading 執行摘要 (<run_started_at 轉成可讀的 UTC 時間字串>)`, 接一行 `本次有成交` 或 `本次無成交`(依 `record["symbols"]` 裡是否存在任一 `execution_result.type == "FillEvent"` 判斷)
   - 逐一走訪 `record["symbols"]`(key 為標的代號) , 依 `risk_decision.type` 產出一行文字 :
-    - `NoActionNeeded` → `<symbol>: 本次無動作`
-    - `RejectionEvent` → `<symbol>: 交易被風控擋下 (<reason>, 實際值=<computed_value>, 上限=<limit_value>)`
-    - `OrderEvent` 且 `execution_result.type == "FillEvent"` → `<symbol>: <買入/賣出> <quantity> @ <average_price> 成交 (order_id=<order_id>)`
-    - `OrderEvent` 且 `execution_result.type == "FailEvent"` → `<symbol>: 下單失敗 (<reason>)`
+    - `NoActionNeeded` 時 : `<symbol>: 本次無動作`
+    - `RejectionEvent` 時 : `<symbol>: 交易被風控擋下 (<reason>, 實際值=<computed_value>, 上限=<limit_value>)`
+    - `OrderEvent` 且 `execution_result.type == "FillEvent"` 時 : `<symbol>: <買入/賣出> <quantity> @ <average_price> 成交 (order_id=<order_id>)`
+    - `OrderEvent` 且 `execution_result.type == "FailEvent"` 時 : `<symbol>: 下單失敗 (<reason>)`
   - 已 fetch 失敗或數據陳舊而被 `run_once.py` 跳過的標的, 本來就不會出現在 `record["symbols"]` 裡(見 `run_once.py` 現有邏輯的 `continue`) , 因此摘要自然不會提到它們, 不需要額外處理
-- `main()` : 在 `record = run_scheduled(...)` 成功回傳後(原本「正常完成, 不發告警」的分支) , 若 `NOTIFY_RUN_SUMMARY` 為真, 呼叫 `telegram_alerts.send_alert(_format_run_summary(record))`; 其餘印出摘要到 stdout、`exit 0` 的行為不變
+- `main()` : 在 `record = run_scheduled(...)` 成功回傳後(原本正常完成, 不發告警的分支) , 若 `NOTIFY_RUN_SUMMARY` 為真, 呼叫 `telegram_alerts.send_alert(_format_run_summary(record))`; 其餘印出摘要到 stdout, `exit 0` 的行為不變
 
 **關鍵重用決策** : 沿用既有的 `telegram_alerts.send_alert`(已保證不拋例外, 失敗只記錄) , 不新增通知管道或重試邏輯.
 
@@ -59,14 +59,14 @@
 `tests/test_paper_trading_scheduler.py` :
 
 - `_format_run_summary` 單元測試(直接餵手造的 `record` dict, 不需要跑真正的 `run_once`) :
-  - 全部標的皆 `NoActionNeeded` → 標頭為「本次無成交」, 逐標的列出「本次無動作」
-  - 含一個 `FillEvent` → 標頭為「本次有成交」, 該標的行含買賣方向、數量、成交價、order_id
-  - 含一個 `RejectionEvent` → 該標的行含 reason、computed_value、limit_value
-  - 含一個 `FailEvent` → 該標的行含下單失敗與 reason
+  - 全部標的皆 `NoActionNeeded` 時, 標頭為 `本次無成交`, 逐標的列出 `本次無動作`
+  - 含一個 `FillEvent` 時, 標頭為 `本次有成交`, 該標的行含買賣方向, 數量, 成交價, order_id
+  - 含一個 `RejectionEvent` 時, 該標的行含 reason, computed_value, limit_value
+  - 含一個 `FailEvent` 時, 該標的行含下單失敗與 reason
 - 更新既有的 `test_main_exits_zero_without_alert_when_successful`(目前斷言正常完成時 `alerts == []`, 這個假設在本次改動後不再成立) : 改成斷言正常完成時 `telegram_alerts.send_alert` 被呼叫一次, 且訊息內容來自 `_format_run_summary`
 - 新增 `test_main_does_not_send_summary_when_notify_disabled` : 以 `monkeypatch.setattr(scheduler, "NOTIFY_RUN_SUMMARY", False)` 關閉開關, 斷言正常完成時 `telegram_alerts.send_alert` 未被呼叫
 - 沿用既有慣例 : `telegram_alerts.send_alert` 全程 mock, 不對外發真實請求
 
 ## 部署 (deployment)
 
-無需額外部署步驟 —— `scheduler.py` 已在 crontab 排程中, 本次只是行為擴充, 隨下一次 `git push` 後的排程執行自動生效. 若使用者事後想關閉通知, 只需把 `NOTIFY_RUN_SUMMARY` 改成 `False` 並提交.
+無需額外部署步驟 : `scheduler.py` 已在 crontab 排程中, 本次只是行為擴充, 隨下一次 `git push` 後的排程執行自動生效. 若使用者事後想關閉通知, 只需把 `NOTIFY_RUN_SUMMARY` 改成 `False` 並提交.
