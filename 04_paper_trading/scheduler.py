@@ -16,6 +16,7 @@ import run_once  # noqa: E402
 import telegram_alerts  # noqa: E402
 
 SCHEDULER_LOCK_PATH = os.path.join(_paper_trading_directory, "logs", "scheduler.lock")
+NOTIFY_RUN_SUMMARY = True  # 排程正常完成後是否發送 Telegram 執行摘要, 設為 False 可關閉此通知
 
 
 class SchedulerLockedError(Exception):
@@ -93,6 +94,8 @@ def main() -> None:
         telegram_alerts.send_alert(f"排程執行失敗: {error}")
         traceback.print_exc()
         sys.exit(1)
+    if NOTIFY_RUN_SUMMARY:
+        telegram_alerts.send_alert(_format_run_summary(record))
     print(f"排程執行完成, 處理標的數: {len(record['symbols'])}")
     sys.exit(0)
 

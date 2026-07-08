@@ -125,10 +125,34 @@ def test_run_scheduled_raises_when_lock_already_held(tmp_path, monkeypatch):
         holder_file.close()
 
 
-def test_main_exits_zero_without_alert_when_successful(monkeypatch):
-    monkeypatch.setattr(
-        scheduler, "run_scheduled", lambda lock_file_path: {"symbols": {"BTCUSDT": {}}}
-    )
+def test_main_sends_summary_alert_and_exits_zero_when_successful(monkeypatch):
+    fake_record = {
+        "run_started_at": "2026-07-08T09:05:53+00:00",
+        "symbols": {
+            "BTCUSDT": {"risk_decision": {"type": "NoActionNeeded"}, "execution_result": None},
+        },
+    }
+    monkeypatch.setattr(scheduler, "run_scheduled", lambda lock_file_path: fake_record)
+    alerts = []
+    monkeypatch.setattr(scheduler.telegram_alerts, "send_alert", lambda message: alerts.append(message))
+
+    with pytest.raises(SystemExit) as exit_info:
+        scheduler.main()
+
+    assert exit_info.value.code == 0
+    assert len(alerts) == 1
+    assert alerts[0] == scheduler._format_run_summary(fake_record)
+
+
+def test_main_does_not_send_summary_when_notify_disabled(monkeypatch):
+    fake_record = {
+        "run_started_at": "2026-07-08T09:05:53+00:00",
+        "symbols": {
+            "BTCUSDT": {"risk_decision": {"type": "NoActionNeeded"}, "execution_result": None},
+        },
+    }
+    monkeypatch.setattr(scheduler, "run_scheduled", lambda lock_file_path: fake_record)
+    monkeypatch.setattr(scheduler, "NOTIFY_RUN_SUMMARY", False)
     alerts = []
     monkeypatch.setattr(scheduler.telegram_alerts, "send_alert", lambda message: alerts.append(message))
 
