@@ -75,7 +75,7 @@ def run_once(symbols: list = None) -> dict:
     account_balances = binance_testnet_client.get_account_balances()
 
     signal_events = {}
-    stale_symbols = []
+    stale_symbols = {}
     close_price_histories = {}
     current_base_asset_balances = {}
     fetch_failures = {}
@@ -91,11 +91,12 @@ def run_once(symbols: list = None) -> dict:
         last_candle_open_time = (
             ohlcv_dataframe["open_time"].iloc[-1].to_pydatetime().replace(tzinfo=timezone.utc)
         )
-        is_fresh = risk_agent.check_data_staleness(
-            last_candle_open_time, datetime.now(timezone.utc), BAR_INTERVAL
-        )
+        current_time = datetime.now(timezone.utc)
+        is_fresh = risk_agent.check_data_staleness(last_candle_open_time, current_time, BAR_INTERVAL)
         if not is_fresh:
-            stale_symbols.append(symbol)
+            stale_symbols[symbol] = risk_agent.compute_staleness_detail(
+                last_candle_open_time, current_time, BAR_INTERVAL
+            )
             continue
 
         signal_event = signal_agent.decide(ohlcv_dataframe, symbol)
@@ -115,6 +116,10 @@ def run_once(symbols: list = None) -> dict:
         daily_risk_state.save_daily_state(DAILY_STATE_FILE_PATH, daily_state)
     day_start_equity_usdt = daily_state["equity_at_day_start_usdt"]
 
+    record["account_equity_usdt"] = account_equity_usdt
+    record["day_start_equity_usdt"] = day_start_equity_usdt
+    record["risk_limits"] = RISK_LIMITS
+    record["engine_parameters"] = signal_agent.FROZEN_ENGINE_PARAMETERS
     record["fetch_failures"] = fetch_failures
     record["stale_symbols"] = stale_symbols
 
@@ -143,6 +148,15 @@ def run_once(symbols: list = None) -> dict:
 
     for symbol, decision in decisions.items():
         symbol_record = {"risk_decision": _serialize_event(decision)}
+        if symbol in signal_events:
+            signal_event = signal_events[symbol]
+            symbol_record["signal"] = {
+                "target_position": signal_event.target_position,
+                "latest_close_price": signal_event.latest_close_price,
+                "latest_average_true_range": signal_event.latest_average_true_range,
+                "as_of_timestamp": signal_event.as_of_timestamp,
+            }
+            symbol_record["current_base_asset_balance"] = current_base_asset_balances[symbol]
         if isinstance(decision, OrderEvent):
             symbol_filters = binance_testnet_client.get_symbol_filters(symbol)
             execution_result = execution_agent.execute(decision, symbol_filters)

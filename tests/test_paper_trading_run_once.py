@@ -134,3 +134,68 @@ def test_run_once_records_fetch_failure_without_aborting_other_symbols(tmp_path,
     with open(tmp_path / "run_log.jsonl", encoding="utf-8") as log_file:
         logged_record = json.loads(log_file.readline())
     assert "模擬網路逾時" in logged_record["fetch_failures"]["BTCUSDT"]
+
+
+def test_run_once_records_equity_snapshot_and_signal_context(tmp_path, monkeypatch):
+    _patch_common(monkeypatch, tmp_path)
+    monkeypatch.setattr(
+        run_once.data_agent, "fetch_latest_candles", lambda symbol: _make_ohlcv_dataframe()
+    )
+    monkeypatch.setattr(
+        run_once.signal_agent, "decide", lambda ohlcv_dataframe, symbol: _make_signal_event(symbol, 1)
+    )
+    monkeypatch.setattr(
+        run_once.binance_testnet_client,
+        "get_account_balances",
+        lambda: {"BTC": 0.01, "USDT": 10_000.0},
+    )
+    monkeypatch.setattr(
+        run_once.risk_agent, "review_portfolio", lambda *args, **kwargs: {"BTCUSDT": None}
+    )
+
+    record = run_once.run_once(symbols=["BTCUSDT"])
+
+    expected_equity = 10_000.0 + 0.01 * 50_000.0
+    assert record["account_equity_usdt"] == pytest.approx(expected_equity)
+    assert record["day_start_equity_usdt"] == pytest.approx(expected_equity)
+    assert record["risk_limits"] == run_once.RISK_LIMITS
+    assert record["engine_parameters"] == run_once.signal_agent.FROZEN_ENGINE_PARAMETERS
+    assert record["symbols"]["BTCUSDT"]["signal"]["target_position"] == 1
+    assert record["symbols"]["BTCUSDT"]["signal"]["latest_close_price"] == 50_000.0
+    assert record["symbols"]["BTCUSDT"]["signal"]["latest_average_true_range"] == 1_000.0
+    assert record["symbols"]["BTCUSDT"]["current_base_asset_balance"] == 0.01
+
+
+def test_run_once_records_stale_symbol_detail_as_dict(tmp_path, monkeypatch):
+    _patch_common(monkeypatch, tmp_path)
+    stale_open_time = pd.Timestamp.now(tz="UTC").tz_localize(None) - pd.Timedelta(days=10)
+    stale_ohlcv_dataframe = pd.DataFrame(
+        {
+            "open_time": [stale_open_time],
+            "open": [50_000.0],
+            "high": [50_100.0],
+            "low": [49_900.0],
+            "close": [50_000.0],
+            "volume": [10.0],
+        }
+    )
+    monkeypatch.setattr(
+        run_once.data_agent, "fetch_latest_candles", lambda symbol: stale_ohlcv_dataframe
+    )
+    monkeypatch.setattr(
+        run_once.binance_testnet_client,
+        "get_account_balances",
+        lambda: {"BTC": 0.0, "USDT": 10_000.0},
+    )
+    monkeypatch.setattr(
+        run_once.risk_agent, "review_portfolio", lambda *args, **kwargs: {"BTCUSDT": None}
+    )
+
+    record = run_once.run_once(symbols=["BTCUSDT"])
+
+    assert isinstance(record["stale_symbols"], dict)
+    assert "BTCUSDT" in record["stale_symbols"]
+    assert record["stale_symbols"]["BTCUSDT"]["time_since_close_seconds"] > 0
+    assert record["stale_symbols"]["BTCUSDT"]["threshold_seconds"] == pytest.approx(
+        run_once.BAR_INTERVAL.total_seconds() * 1.5
+    )
