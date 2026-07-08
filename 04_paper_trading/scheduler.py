@@ -22,6 +22,48 @@ class SchedulerLockedError(Exception):
     """上一次排程執行尚未結束 (鎖仍被持有), 本次應跳過, 不與上一次併發執行"""
 
 
+def _format_symbol_line(symbol: str, symbol_record: dict) -> str:
+    """把單一標的的 risk_decision / execution_result 轉成摘要訊息裡的一行文字"""
+    risk_decision = symbol_record["risk_decision"]
+    decision_type = risk_decision["type"]
+    if decision_type == "NoActionNeeded":
+        return f"{symbol}: 本次無動作"
+    if decision_type == "RejectionEvent":
+        return (
+            f"{symbol}: 交易被風控擋下 ({risk_decision['reason']}, "
+            f"實際值={risk_decision['computed_value']}, 上限={risk_decision['limit_value']})"
+        )
+    execution_result = symbol_record["execution_result"]
+    if execution_result["type"] == "FillEvent":
+        side_label = "買入" if execution_result["side"] == "BUY" else "賣出"
+        return (
+            f"{symbol}: {side_label} {execution_result['quantity']} "
+            f"@ {execution_result['average_price']} 成交 (order_id={execution_result['order_id']})"
+        )
+    return f"{symbol}: 下單失敗 ({execution_result['reason']})"
+
+
+def _format_run_summary(record: dict) -> str:
+    """
+    把 run_once() 回傳的 record 轉成人類可讀的執行摘要, 供排程正常完成後發送 Telegram 通知
+    (fetch_failures / stale_symbols / circuit_breaker_triggered 已有各自獨立的告警路徑,
+    這裡不重複提及, 見設計文件 docs/superpowers/specs/2026-07-08-phase3-paper-trading-run-summary-notification-design.md)
+    """
+    symbol_records = record["symbols"]
+    has_fill_event = any(
+        symbol_record["execution_result"] is not None
+        and symbol_record["execution_result"]["type"] == "FillEvent"
+        for symbol_record in symbol_records.values()
+    )
+    header_line = f"Paper trading 執行摘要 ({record['run_started_at']})"
+    trade_summary_line = "本次有成交" if has_fill_event else "本次無成交"
+    symbol_lines = [
+        _format_symbol_line(symbol, symbol_record)
+        for symbol, symbol_record in symbol_records.items()
+    ]
+    return "\n".join([header_line, trade_summary_line, ""] + symbol_lines)
+
+
 def run_scheduled(lock_file_path: str) -> dict:
     """
     以 fcntl.flock(LOCK_EX | LOCK_NB) 對 lock_file_path 嘗試取得非阻塞的獨占鎖

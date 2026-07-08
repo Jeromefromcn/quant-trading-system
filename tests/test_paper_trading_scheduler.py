@@ -7,6 +7,90 @@ import pytest
 import scheduler
 
 
+def test_format_run_summary_reports_no_trade_when_all_no_action():
+    record = {
+        "run_started_at": "2026-07-08T09:05:53+00:00",
+        "symbols": {
+            "BTCUSDT": {"risk_decision": {"type": "NoActionNeeded"}, "execution_result": None},
+            "ETHUSDT": {"risk_decision": {"type": "NoActionNeeded"}, "execution_result": None},
+        },
+    }
+
+    summary = scheduler._format_run_summary(record)
+
+    assert "本次無成交" in summary
+    assert "BTCUSDT: 本次無動作" in summary
+    assert "ETHUSDT: 本次無動作" in summary
+
+
+def test_format_run_summary_reports_trade_when_fill_event_present():
+    record = {
+        "run_started_at": "2026-07-08T09:05:53+00:00",
+        "symbols": {
+            "BTCUSDT": {
+                "risk_decision": {
+                    "type": "OrderEvent", "symbol": "BTCUSDT", "side": "BUY", "quantity": 0.015,
+                },
+                "execution_result": {
+                    "type": "FillEvent", "symbol": "BTCUSDT", "side": "BUY", "quantity": 0.015,
+                    "average_price": 68125.3, "order_id": "3021984710",
+                    "commission": 0.0000045, "commission_asset": "BTC",
+                },
+            },
+            "ETHUSDT": {"risk_decision": {"type": "NoActionNeeded"}, "execution_result": None},
+        },
+    }
+
+    summary = scheduler._format_run_summary(record)
+
+    assert "本次有成交" in summary
+    assert "BTCUSDT: 買入 0.015 @ 68125.3 成交 (order_id=3021984710)" in summary
+    assert "ETHUSDT: 本次無動作" in summary
+
+
+def test_format_run_summary_reports_rejection_reason_and_values():
+    record = {
+        "run_started_at": "2026-07-08T09:05:53+00:00",
+        "symbols": {
+            "ETHUSDT": {
+                "risk_decision": {
+                    "type": "RejectionEvent", "symbol": "ETHUSDT",
+                    "reason": "correlation_exceeds_limit",
+                    "computed_value": 0.87, "limit_value": 0.8,
+                },
+                "execution_result": None,
+            },
+        },
+    }
+
+    summary = scheduler._format_run_summary(record)
+
+    assert "本次無成交" in summary
+    assert "ETHUSDT: 交易被風控擋下 (correlation_exceeds_limit, 實際值=0.87, 上限=0.8)" in summary
+
+
+def test_format_run_summary_reports_execution_failure_reason():
+    record = {
+        "run_started_at": "2026-07-08T09:05:53+00:00",
+        "symbols": {
+            "BTCUSDT": {
+                "risk_decision": {
+                    "type": "OrderEvent", "symbol": "BTCUSDT", "side": "SELL", "quantity": 0.01,
+                },
+                "execution_result": {
+                    "type": "FailEvent", "symbol": "BTCUSDT",
+                    "reason": "insufficient_balance", "raw_exchange_response": "{}",
+                },
+            },
+        },
+    }
+
+    summary = scheduler._format_run_summary(record)
+
+    assert "本次無成交" in summary
+    assert "BTCUSDT: 下單失敗 (insufficient_balance)" in summary
+
+
 def test_run_scheduled_calls_run_once_when_lock_available(tmp_path, monkeypatch):
     lock_file_path = str(tmp_path / "scheduler.lock")
     call_count = {"n": 0}
