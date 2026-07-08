@@ -53,6 +53,13 @@ def test_determine_current_position_exactly_at_dust_threshold_is_long():
     assert risk_agent.determine_current_position(0.0002, 50_000.0) == 1  # 市值剛好 10 USDT, 達門檻視為多單
 
 
+def test_compute_potential_loss_usdt_matches_quantity_times_stop_distance():
+    result = risk_agent.compute_potential_loss_usdt(
+        order_quantity=0.03, average_true_range=1_000.0, atr_stop_multiplier=2.0
+    )
+    assert result == pytest.approx(60.0)  # 0.03 * 2 * 1000
+
+
 def test_check_max_loss_per_trade_passes_within_cap():
     assert risk_agent.check_max_loss_per_trade(
         order_quantity=0.03,
@@ -83,6 +90,15 @@ def test_check_max_loss_per_trade_rejects_when_exceeding_cap():
     ) is False  # 潛在虧損 = 0.1 * 2 * 1000 = 200, 超過上限 150
 
 
+def test_compute_daily_loss_fraction_returns_zero_when_day_start_equity_non_positive():
+    assert risk_agent.compute_daily_loss_fraction(9_000.0, 0.0) == 0.0
+
+
+def test_compute_daily_loss_fraction_computes_correct_ratio():
+    result = risk_agent.compute_daily_loss_fraction(9_500.0, 10_000.0)
+    assert result == pytest.approx(0.05)
+
+
 def test_check_daily_circuit_breaker_passes_when_no_loss():
     assert risk_agent.check_daily_circuit_breaker(10_000.0, 10_000.0, 0.04) is True
 
@@ -105,6 +121,40 @@ def test_check_max_concurrent_positions_passes_just_below_cap():
 
 def test_check_max_concurrent_positions_rejects_at_cap():
     assert risk_agent.check_max_concurrent_positions(3, "crypto", {"crypto": 3, "stocks": 5}) is False
+
+
+def test_compute_max_correlation_returns_none_when_no_existing_positions():
+    candidate_close_prices = pd.Series([100.0, 101.0, 102.0])
+    assert risk_agent.compute_max_correlation_against_existing_positions(
+        candidate_close_prices, {}
+    ) is None
+
+
+def test_compute_max_correlation_returns_none_when_insufficient_overlap():
+    candidate_close_prices = pd.Series([100.0, 101.0])
+    existing_close_prices = pd.Series([100.0, 101.0])
+    assert risk_agent.compute_max_correlation_against_existing_positions(
+        candidate_close_prices, {"ETHUSDT": existing_close_prices}
+    ) is None
+
+
+def test_compute_max_correlation_returns_none_when_correlation_is_nan():
+    candidate_close_prices = pd.Series([100.0, 102.0, 99.0, 105.0])
+    existing_close_prices = pd.Series([100.0, 100.0, 100.0, 100.0])
+    assert risk_agent.compute_max_correlation_against_existing_positions(
+        candidate_close_prices, {"ETHUSDT": existing_close_prices}
+    ) is None
+
+
+def test_compute_max_correlation_returns_highest_value_across_existing_positions():
+    candidate_close_prices = pd.Series([100.0, 102.0, 99.0, 105.0, 110.0])
+    highly_correlated_prices = candidate_close_prices * 2.0  # 相關係數 = 1.0
+    negatively_correlated_prices = pd.Series([100.0, 98.0, 101.0, 95.0, 90.0])
+    result = risk_agent.compute_max_correlation_against_existing_positions(
+        candidate_close_prices,
+        {"ETHUSDT": highly_correlated_prices, "SOLUSDT": negatively_correlated_prices},
+    )
+    assert result == pytest.approx(1.0)
 
 
 def test_check_correlation_limit_passes_when_no_existing_positions():
@@ -144,6 +194,17 @@ def test_check_correlation_limit_rejects_when_correlation_is_nan():
     assert risk_agent.check_correlation_limit(
         candidate_close_prices, {"ETHUSDT": existing_close_prices}, max_correlation=0.8
     ) is False
+
+
+def test_compute_staleness_detail_returns_seconds_since_close_and_threshold():
+    current_time = datetime(2026, 7, 6, 12, 0, tzinfo=timezone.utc)
+    last_candle_open_time = datetime(2026, 7, 5, 12, 0, tzinfo=timezone.utc)  # 24 小時前開盤
+    detail = risk_agent.compute_staleness_detail(
+        last_candle_open_time, current_time, timedelta(days=1), 1.5
+    )
+    # 約略收盤時間 = 開盤 + 1 天 = 2026-07-06 12:00, 與 current_time 完全相同, 已過期 0 秒
+    assert detail["time_since_close_seconds"] == pytest.approx(0.0)
+    assert detail["threshold_seconds"] == pytest.approx(timedelta(days=1.5).total_seconds())
 
 
 def test_check_data_staleness_passes_when_within_threshold():

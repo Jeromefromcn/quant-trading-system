@@ -51,6 +51,13 @@ def compute_buy_quantity(
     return position_value_usdt / close_price
 
 
+def compute_potential_loss_usdt(
+    order_quantity: float, average_true_range: float, atr_stop_multiplier: float
+) -> float:
+    """算出這筆開倉若觸及停損會虧損多少 USDT(數量 x 停損距離) , 與 check_max_loss_per_trade 內部算法相同"""
+    return order_quantity * atr_stop_multiplier * average_true_range
+
+
 def check_max_loss_per_trade(
     order_quantity: float,
     average_true_range: float,
@@ -64,8 +71,17 @@ def check_max_loss_per_trade(
     一個限制部位金額本身; 在凍結的 exp_002 風險比例(1%) 下, 這條規則正常情況下不會觸發,
     只在風險比例設定被改動或計算異常時才會攔下, 與既有名目金額上限的防呆精神一致
     """
-    potential_loss_usdt = order_quantity * atr_stop_multiplier * average_true_range
+    potential_loss_usdt = compute_potential_loss_usdt(
+        order_quantity, average_true_range, atr_stop_multiplier
+    )
     return potential_loss_usdt <= account_equity_usdt * max_loss_per_trade_fraction
+
+
+def compute_daily_loss_fraction(account_equity_usdt: float, day_start_equity_usdt: float) -> float:
+    """算出當日虧損比例; 當日開始淨值為 0 或負值時視為無法判斷, 回傳 0.0(保守, 不誤判為熔斷)"""
+    if day_start_equity_usdt <= 0:
+        return 0.0
+    return (day_start_equity_usdt - account_equity_usdt) / day_start_equity_usdt
 
 
 def check_daily_circuit_breaker(
@@ -76,8 +92,7 @@ def check_daily_circuit_breaker(
     """回傳 True 代表尚未觸發每日熔斷; 當日開始淨值為 0 或負值時視為無法判斷, 保守放行不誤擋"""
     if day_start_equity_usdt <= 0:
         return True
-    daily_loss_fraction = (day_start_equity_usdt - account_equity_usdt) / day_start_equity_usdt
-    return daily_loss_fraction <= max_daily_loss_fraction
+    return compute_daily_loss_fraction(account_equity_usdt, day_start_equity_usdt) <= max_daily_loss_fraction
 
 
 def check_max_concurrent_positions(
@@ -85,6 +100,38 @@ def check_max_concurrent_positions(
 ) -> bool:
     """回傳 True 代表該類別(加密貨幣或美股) 尚未達最大同時持倉數上限"""
     return current_position_count < max_positions_by_market[market_type]
+
+
+def compute_max_correlation_against_existing_positions(
+    candidate_close_price_series: pd.Series, existing_position_close_price_series: dict
+) -> float | None:
+    """
+    回傳候選標的與所有現有持倉中最高的日報酬率相關係數(correlation coefficient) . 無現有持倉時
+    回傳 None(代表無需比較) . 任一現有持倉缺少至少 2 個重疊報酬率數據點, 或相關係數算出 NaN
+    (例如某段價格完全不變) , 同樣回傳 None(代表數據不足以計算, 而非數值為 0) , 呼叫端應將 None
+    視為無法確認風險, 保守處理
+    """
+    if not existing_position_close_price_series:
+        return None
+    candidate_returns = candidate_close_price_series.pct_change().dropna()
+    correlations = []
+    for existing_returns_series in existing_position_close_price_series.values():
+        existing_returns = existing_returns_series.pct_change().dropna()
+        overlapping_length = min(len(candidate_returns), len(existing_returns))
+        if overlapping_length < 2:
+            return None
+        aligned_candidate_returns = candidate_returns.iloc[-overlapping_length:].reset_index(
+            drop=True
+        )
+        aligned_existing_returns = existing_returns.iloc[-overlapping_length:].reset_index(
+            drop=True
+        )
+        with np.errstate(invalid="ignore", divide="ignore"):
+            correlation = aligned_candidate_returns.corr(aligned_existing_returns)
+        if pd.isna(correlation):
+            return None
+        correlations.append(correlation)
+    return max(correlations)
 
 
 def check_correlation_limit(
@@ -99,23 +146,34 @@ def check_correlation_limit(
     """
     if not existing_position_close_price_series:
         return True
-    candidate_returns = candidate_close_price_series.pct_change().dropna()
-    for existing_returns_series in existing_position_close_price_series.values():
-        existing_returns = existing_returns_series.pct_change().dropna()
-        overlapping_length = min(len(candidate_returns), len(existing_returns))
-        if overlapping_length < 2:
-            return False
-        aligned_candidate_returns = candidate_returns.iloc[-overlapping_length:].reset_index(
-            drop=True
-        )
-        aligned_existing_returns = existing_returns.iloc[-overlapping_length:].reset_index(
-            drop=True
-        )
-        with np.errstate(invalid="ignore", divide="ignore"):
-            correlation = aligned_candidate_returns.corr(aligned_existing_returns)
-        if pd.isna(correlation) or correlation > max_correlation:
-            return False
-    return True
+    max_correlation_value = compute_max_correlation_against_existing_positions(
+        candidate_close_price_series, existing_position_close_price_series
+    )
+    if max_correlation_value is None:
+        return False
+    # pandas 的 corr() 回傳 numpy.float64, 比較結果是 numpy.bool_, 這裡轉成 Python 原生 bool
+    # 以維持既有函式簽名回傳型別的一致性(既有測試用 is True / is False 做嚴格型別比對)
+    return bool(max_correlation_value <= max_correlation)
+
+
+def compute_staleness_detail(
+    last_candle_open_time: datetime,
+    current_time: datetime,
+    bar_interval: timedelta = timedelta(days=1),
+    staleness_multiplier: float = 1.5,
+) -> dict:
+    """
+    回傳 {"time_since_close_seconds": 已過期秒數(可能為負, 代表尚未到約略收盤時間) ,
+    "threshold_seconds": 門檻秒數}, 與 check_data_staleness 的計算邏輯相同, 供
+    run_once.py 記錄過期細節用
+    """
+    approximate_close_time = last_candle_open_time + bar_interval
+    time_since_close = current_time - approximate_close_time
+    threshold = bar_interval * staleness_multiplier
+    return {
+        "time_since_close_seconds": time_since_close.total_seconds(),
+        "threshold_seconds": threshold.total_seconds(),
+    }
 
 
 def check_data_staleness(
@@ -130,9 +188,10 @@ def check_data_staleness(
     對比 K 線週期的 staleness_multiplier 倍門檻 — 用相對於週期的門檻, 而非固定分鐘數,
     因為 exp_002 策略以日線決策, 固定的短分鐘數門檻對日線沒有意義(見設計文件)
     """
-    approximate_close_time = last_candle_open_time + bar_interval
-    time_since_close = current_time - approximate_close_time
-    return time_since_close <= bar_interval * staleness_multiplier
+    detail = compute_staleness_detail(
+        last_candle_open_time, current_time, bar_interval, staleness_multiplier
+    )
+    return detail["time_since_close_seconds"] <= detail["threshold_seconds"]
 
 
 SYMBOL_MARKET_TYPES = {"BTCUSDT": "crypto", "ETHUSDT": "crypto"}
