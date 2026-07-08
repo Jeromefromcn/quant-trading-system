@@ -86,6 +86,8 @@ def _format_daily_report(records: list[dict], target_date: date) -> str:
     latest_symbols = records[-1]["symbols"]
     position_lines = []
     for symbol, symbol_record in latest_symbols.items():
+        if "current_base_asset_balance" not in symbol_record:
+            continue
         balance = symbol_record["current_base_asset_balance"]
         if balance != 0:
             latest_close_price = symbol_record["signal"]["latest_close_price"]

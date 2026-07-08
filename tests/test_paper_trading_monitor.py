@@ -221,6 +221,37 @@ def test_format_daily_report_shows_no_positions_when_all_zero():
     assert "目前無持倉" in report
 
 
+def test_format_daily_report_skips_stale_symbol_missing_signal_and_balance():
+    records = [
+        {
+            "run_started_at": "2026-07-08T20:00:00+00:00",
+            "account_equity_usdt": 10000.0,
+            "day_start_equity_usdt": 10000.0,
+            "stale_symbols": {"BTCUSDT": {"time_since_close_seconds": 999, "threshold_seconds": 129600}},
+            "circuit_breaker_triggered": False,
+            "symbols": {
+                "BTCUSDT": {
+                    "risk_decision": {
+                        "type": "RejectionEvent", "reason": "data_staleness",
+                        "computed_value": None, "limit_value": None,
+                    },
+                    "execution_result": None,
+                },
+                "ETHUSDT": {
+                    "risk_decision": {"type": "NoActionNeeded"},
+                    "execution_result": None,
+                    "current_base_asset_balance": 0.02,
+                    "signal": {"latest_close_price": 3500.0},
+                },
+            },
+        },
+    ]
+
+    report = monitor._format_daily_report(records, date(2026, 7, 8))
+
+    assert "ETHUSDT: 0.02 (約 70.00 USDT)" in report
+
+
 def test_format_daily_report_counts_staleness_and_circuit_breaker_triggers():
     records = [
         {
