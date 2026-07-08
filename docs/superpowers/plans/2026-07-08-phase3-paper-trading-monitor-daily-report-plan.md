@@ -4,7 +4,7 @@
 
 **Goal:** 新增 `04_paper_trading/monitor.py`, 讓獨立 crontab 於每天 UTC 00:00 觸發時, 讀取 `logs/run_log.jsonl` 中前一個 UTC 日曆天的所有執行紀錄, 彙總成一則每日報告並透過 Telegram 發送.
 
-**Architecture:** `monitor.py` 提供三個函式 : `_load_records_for_date(log_file_path, target_date)` 逐行讀 jsonl 並依 `run_started_at` 的 UTC 日期過濾; `_format_daily_report(records, target_date)` 是純函式, 把過濾後的 records 組成人類可讀的報告文字(成交交易、執行/拒絕次數統計、帳戶淨值變化、持倉明細、系統健康); `main()` 算出目標日期(執行當下 UTC 日期減一天), 串接讀檔 → 格式化 → `telegram_alerts.send_alert()`. 沿用 `scheduler.py` 已確立的 `sys.path.insert` 手法與純函式 + mock 測試風格.
+**Architecture:** `monitor.py` 提供三個函式 : `_load_records_for_date(log_file_path, target_date)` 逐行讀 jsonl 並依 `run_started_at` 的 UTC 日期過濾; `_format_daily_report(records, target_date)` 是純函式, 把過濾後的 records 組成人類可讀的報告文字(成交交易、執行/拒絕次數統計、帳戶淨值變化、持倉明細、系統健康); `main()` 算出目標日期(執行當下 UTC 日期減一天), 依序讀檔, 格式化, 呼叫 `telegram_alerts.send_alert()`. 沿用 `scheduler.py` 已確立的 `sys.path.insert` 手法與純函式 + mock 測試風格.
 
 **Tech Stack:** Python 3 標準庫(`json`, `datetime`), `pytest` + `monkeypatch`(既有測試慣例), 既有 `telegram_alerts.send_alert`, 系統 `crontab`.
 
@@ -13,8 +13,8 @@
 - 本次只新增 `monitor.py` 一個檔案, 不修改 `run_once.py` / `scheduler.py` / `telegram_alerts.py` 的既有邏輯.
 - 只讀 `logs/run_log.jsonl`, 不寫入(每日報告是唯讀彙總, 不產生新的每日狀態檔).
 - 不處理美股, 不做 log 檔案輪替(rotation), YAGNI.
-- 當日彙總只列成交交易 + 統計數字, 不逐次列出「無動作」的執行明細.
-- 當日無任何執行紀錄時仍發送報告, 明確標註「當日無任何執行紀錄」.
+- 當日彙總只列成交交易 + 統計數字, 不逐次列出無動作的執行明細.
+- 當日無任何執行紀錄時仍發送報告, 明確標註: 當日無任何執行紀錄.
 - `EXPECTED_RUNS_PER_DAY = 6`(對應目前 crontab 每 4 小時觸發一次), 以模組層級常數定義並附註來源.
 - `telegram_alerts.send_alert` 本身保證不拋例外, `monitor.py` 不需要再包一層防護.
 - 成交交易段的時間以 `"%H:%M UTC"` 格式化(來自各 record 的 `run_started_at`).
@@ -196,7 +196,7 @@ def _format_daily_report(records: list[dict], target_date: date) -> str:
     """
     把 _load_records_for_date 過濾出的當日 records 組成人類可讀的每日報告文字.
     當日無任何紀錄時只回傳標題 + 提示, 其餘段落略過(仍要發送, 讓使用者能分辨
-    「今天真的沒交易」與「排程/monitor.py 本身沒跑」)
+    今天真的沒交易, 與排程或 monitor.py 本身沒跑這兩種情況)
     """
     header_line = f"每日報告 ({target_date.isoformat()} UTC)"
     if not records:
@@ -209,7 +209,7 @@ def _format_daily_report(records: list[dict], target_date: date) -> str:
 Run: `cd /home/ubuntu/jerome/quant-trading-system && python3 -m pytest tests/test_paper_trading_monitor.py -v`
 Expected: PASS
 
-- [ ] **Step 5: 寫失敗測試 : 成交交易段列出方向/數量/價格/時間, 全天無成交時輸出「今日無成交」**
+- [ ] **Step 5: 寫失敗測試 : 成交交易段列出方向/數量/價格/時間, 全天無成交時輸出: 今日無成交**
 
 Append to `tests/test_paper_trading_monitor.py`:
 
@@ -286,7 +286,7 @@ def _format_daily_report(records: list[dict], target_date: date) -> str:
     """
     把 _load_records_for_date 過濾出的當日 records 組成人類可讀的每日報告文字.
     當日無任何紀錄時只回傳標題 + 提示, 其餘段落略過(仍要發送, 讓使用者能分辨
-    「今天真的沒交易」與「排程/monitor.py 本身沒跑」)
+    今天真的沒交易, 與排程或 monitor.py 本身沒跑這兩種情況)
     """
     header_line = f"每日報告 ({target_date.isoformat()} UTC)"
     if not records:
@@ -417,7 +417,7 @@ def test_format_daily_report_shows_equity_change_percentage():
 
     report = monitor._format_daily_report(records, date(2026, 7, 8))
 
-    assert "帳戶淨值: 10000.00 → 9700.00 USDT (-3.00%)" in report
+    assert "帳戶淨值從 10000.00 變化至 9700.00 USDT (-3.00%)" in report
 ```
 
 - [ ] **Step 14: 執行測試確認失敗(帳戶淨值段尚未實作)**
@@ -434,7 +434,7 @@ Modify the `return` statement of `_format_daily_report` in `04_paper_trading/mon
     day_end_equity = records[-1]["account_equity_usdt"]
     equity_change_percentage = (day_end_equity - day_start_equity) / day_start_equity * 100
     equity_line = (
-        f"帳戶淨值: {day_start_equity:.2f} → {day_end_equity:.2f} USDT "
+        f"帳戶淨值從 {day_start_equity:.2f} 變化至 {day_end_equity:.2f} USDT "
         f"({equity_change_percentage:+.2f}%)"
     )
 
@@ -446,7 +446,7 @@ Modify the `return` statement of `_format_daily_report` in `04_paper_trading/mon
 Run: `cd /home/ubuntu/jerome/quant-trading-system && python3 -m pytest tests/test_paper_trading_monitor.py -v`
 Expected: PASS(6 passed)
 
-- [ ] **Step 17: 寫失敗測試 : 持倉明細正確列出非 0 餘額, 略過 0 餘額標的; 全部為 0 時輸出「目前無持倉」**
+- [ ] **Step 17: 寫失敗測試 : 持倉明細正確列出非 0 餘額, 略過 0 餘額標的; 全部為 0 時輸出: 目前無持倉**
 
 Append to `tests/test_paper_trading_monitor.py`:
 
@@ -615,7 +615,7 @@ git commit -m "feat: add _format_daily_report to summarize daily paper trading a
 - Consumes: `monitor._load_records_for_date(log_file_path: str, target_date: date) -> list[dict]`(Task 1)、`monitor._format_daily_report(records: list[dict], target_date: date) -> str`(Task 2)、`telegram_alerts.send_alert(message: str) -> None`(既有函式, `04_paper_trading/telegram_alerts.py:19`).
 - Produces: `monitor.main() -> None`, 供 `if __name__ == "__main__":` 呼叫, 也是 crontab 進入點.
 
-- [ ] **Step 1: 寫失敗測試 : `main()` 以「執行當下 UTC 日期減一天」為目標日期, 依序呼叫讀檔, 格式化, 發送**
+- [ ] **Step 1: 寫失敗測試 : `main()` 以執行當下 UTC 日期減一天為目標日期, 依序呼叫讀檔, 格式化, 發送**
 
 Change the top of `tests/test_paper_trading_monitor.py` from:
 
@@ -716,7 +716,7 @@ git commit -m "feat: add main() to send daily paper trading report via Telegram"
 Run: `cd /home/ubuntu/jerome/quant-trading-system && python3 -m pytest tests/test_paper_trading_monitor.py -v`
 Expected: PASS(10 passed)
 
-- [ ] **Step 2: 手動執行一次驗證(會真的呼叫 Telegram; 若當日 `run_log.jsonl` 尚無前一 UTC 日曆天的紀錄, 預期送出「當日無任何執行紀錄」屬正常情況)**
+- [ ] **Step 2: 手動執行一次驗證(會真的呼叫 Telegram; 若當日 `run_log.jsonl` 尚無前一 UTC 日曆天的紀錄, 預期送出內容為當日無任何執行紀錄, 屬正常情況)**
 
 Run: `cd /home/ubuntu/jerome/quant-trading-system/04_paper_trading && python3 monitor.py; echo "exit code: $?"`
 Expected: 印出 `每日報告已發送 (YYYY-MM-DD UTC), 涵蓋 N 筆執行紀錄`, `exit code: 0`; 且 Telegram 收到對應內容的訊息
