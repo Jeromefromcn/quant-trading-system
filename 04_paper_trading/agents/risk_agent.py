@@ -199,7 +199,7 @@ SYMBOL_MARKET_TYPES = {"BTCUSDT": "crypto", "ETHUSDT": "crypto"}
 
 def review_portfolio(
     signal_events: dict,
-    stale_symbols: list,
+    stale_symbols: dict,
     current_base_asset_balances: dict,
     account_equity_usdt: float,
     day_start_equity_usdt: float,
@@ -221,14 +221,23 @@ def review_portfolio(
         account_equity_usdt, day_start_equity_usdt, risk_limits["max_daily_loss_fraction"]
     )
     if not circuit_breaker_ok:
+        daily_loss_fraction = compute_daily_loss_fraction(account_equity_usdt, day_start_equity_usdt)
         for symbol in ordered_symbols + list(stale_symbols):
             decisions[symbol] = RejectionEvent(
-                symbol=symbol, reason="每日虧損熔斷已觸發, 停止當日所有交易"
+                symbol=symbol,
+                reason="每日虧損熔斷已觸發, 停止當日所有交易",
+                computed_value=daily_loss_fraction,
+                limit_value=risk_limits["max_daily_loss_fraction"],
             )
         return decisions
 
     for symbol in stale_symbols:
-        decisions[symbol] = RejectionEvent(symbol=symbol, reason="數據已過期, 暫停信號生成")
+        decisions[symbol] = RejectionEvent(
+            symbol=symbol,
+            reason="數據已過期, 暫停信號生成",
+            computed_value=stale_symbols[symbol]["time_since_close_seconds"],
+            limit_value=stale_symbols[symbol]["threshold_seconds"],
+        )
 
     open_long_symbols = [
         symbol
@@ -273,7 +282,15 @@ def review_portfolio(
             account_equity_usdt,
             risk_limits["max_loss_per_trade_fraction"],
         ):
-            decisions[symbol] = RejectionEvent(symbol=symbol, reason="單筆潛在虧損超過風控上限")
+            potential_loss_usdt = compute_potential_loss_usdt(
+                buy_quantity, signal_event.latest_average_true_range, engine_parameters["atr_stop_multiplier"]
+            )
+            decisions[symbol] = RejectionEvent(
+                symbol=symbol,
+                reason="單筆潛在虧損超過風控上限",
+                computed_value=potential_loss_usdt / account_equity_usdt,
+                limit_value=risk_limits["max_loss_per_trade_fraction"],
+            )
             continue
 
         market_type = SYMBOL_MARKET_TYPES[symbol]
@@ -286,7 +303,10 @@ def review_portfolio(
             positions_in_same_market_count, market_type, risk_limits["max_positions_by_market"]
         ):
             decisions[symbol] = RejectionEvent(
-                symbol=symbol, reason=f"已達 {market_type} 類別最大同時持倉數上限"
+                symbol=symbol,
+                reason=f"已達 {market_type} 類別最大同時持倉數上限",
+                computed_value=positions_in_same_market_count,
+                limit_value=risk_limits["max_positions_by_market"][market_type],
             )
             continue
 
@@ -300,7 +320,23 @@ def review_portfolio(
             existing_position_close_price_series,
             risk_limits["max_correlation"],
         ):
-            decisions[symbol] = RejectionEvent(symbol=symbol, reason="與現有持倉相關係數超過風控上限")
+            max_correlation_value = compute_max_correlation_against_existing_positions(
+                close_price_histories[symbol], existing_position_close_price_series
+            )
+            if max_correlation_value is None:
+                decisions[symbol] = RejectionEvent(
+                    symbol=symbol,
+                    reason="相關係數無法計算(數據不足或無變化), 風控保守拒絕",
+                    computed_value=None,
+                    limit_value=risk_limits["max_correlation"],
+                )
+            else:
+                decisions[symbol] = RejectionEvent(
+                    symbol=symbol,
+                    reason="與現有持倉相關係數超過風控上限",
+                    computed_value=max_correlation_value,
+                    limit_value=risk_limits["max_correlation"],
+                )
             continue
 
         notional_value_usdt = buy_quantity * signal_event.latest_close_price
@@ -314,6 +350,8 @@ def review_portfolio(
                     f"買進名目金額 {notional_value_usdt:.2f} USDT 超過風控上限 "
                     f"{maximum_allowed_notional_usdt:.2f} USDT"
                 ),
+                computed_value=notional_value_usdt,
+                limit_value=maximum_allowed_notional_usdt,
             )
             continue
 
