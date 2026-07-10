@@ -22,6 +22,31 @@
 
 ---
 
+## Task 0: Repo-wide Chinese punctuation cleanup (prerequisite, precedes Task 1)
+
+**Why this is here:** pre-flight review of this plan found that its own new-code samples used em-dash (`—`), corner-bracket quotes (`「」`), and arrows (`→`) in Chinese docstrings/comments, violating CLAUDE.md's rule ("English punctuation only (`.` `,` `!` `?` `:` `;` `()`), even in Chinese"). Those plan samples have already been fixed inline (Tasks 1-8 below are clean). Checking the actual repo turned up the same pattern pre-existing across the whole codebase: 165 occurrences in 62 files. The user asked for a full-repo cleanup before starting the VOO feature work, done as its own prerequisite pass. This is pure comment/docstring/print-message punctuation substitution — confirmed via repo-wide grep that no test asserts on any string containing these characters (no `match=` regex in `tests/*.py` references them, no exact-substring assertion does either), so there is no runtime-behavior risk, only a text-content risk.
+
+**Hard constraint for `03_research/04_experiments/*/config.py` (9 files: `exp_001` through `exp_008`, plus `_template`):** these are frozen historical experiment records; `exp_002_ema_adx/config.py` specifically is imported live by `agents/signal_agent.py` for real trading decisions. Only comment/docstring text may change in these 9 files. The parameter dictionaries themselves (every `key: value` line, e.g. `"initial_capital": 10_000.0`) must remain byte-for-byte identical — no reformatting, no reordering, no whitespace changes inside the dict literals. Each reviewer for the sub-task touching these files must diff the parameter dict lines before/after and confirm zero changes.
+
+**Replacement rules** (apply consistently, judgment call per instance which fits):
+- Em-dash (`—`) used as a clause separator introducing elaboration → replace with `:`
+- Em-dash used as a parenthetical aside (`X — Y — Z`) → replace with `,` or rephrase as a separate sentence ending in `.`
+- Corner-bracket quotes (`「...」`) → remove the brackets, keep the enclosed text plain (matches the style already used in this plan's own fixed code, e.g. `alpaca_paper_trading_client.py`'s docstring)
+- Arrow (`→`) used to show a pipeline/sequence (`A → B → C`) → rephrase in prose (e.g. "A, 接著 B, 最後 C" or "資料流程依序是 A, B, C") — do not introduce `->` or other ASCII arrows as a substitute, that is not in the whitelist either
+- Never touch anything else: no rewording beyond what's needed to remove the disallowed character, no logic changes, no reordering of code
+
+**Sub-tasks (dispatch and review each independently, same implementer/reviewer loop as Tasks 1-9):**
+
+- **Task 0a:** `01_learning/` — 14 files: `01_pandas/{02_shift_rolling,03_boolean_indexing,04_groupby_merge_resample,05_apply,06_quant_examples}.py`, `02_concepts/{01_ohlcv_basics,03_atr,04_sharpe_drawdown,05_position_sizing,06_simple_backtest,07_backtest_metrics,08_overfitting,09_lookahead_bias,10_train_test_split}.py`. No test suite covers this directory (per CLAUDE.md's architecture table, "run and study, not imported") — verification is `python3 <file>` still runs without a `SyntaxError` for each touched file (these are standalone scripts; a full behavioral run is not required, just confirm the file still parses and imports cleanly).
+- **Task 0b:** `02_data/` — 3 files: `fetchers/binance_fetcher.py`, `fetchers/alpaca_fetcher.py`, `validate_against_independent_source.py`. Verify with `pytest tests/test_binance_fetcher_parsing.py -v`.
+- **Task 0c:** `03_research/` — 20 files: `03_backtest/{report,metrics,engine}.py`, `02_strategies/{trend_following,base}.py`, `01_indicators/{volatility,trend,momentum}.py`, `04_experiments/{new_experiment,run_experiment}.py`, `04_experiments/exp_002_ema_adx/factor_regression.py`, and the 9 frozen config files under the hard constraint above: `04_experiments/_template/config.py`, `04_experiments/exp_001_ema_baseline/config.py`, `04_experiments/exp_002_ema_adx/config.py`, `04_experiments/exp_003_ema_slow/config.py`, `04_experiments/exp_004_trailing_stop/config.py`, `04_experiments/exp_005_tight_trailing/config.py`, `04_experiments/exp_006_eth/config.py`, `04_experiments/exp_007_spy/config.py`, `04_experiments/exp_008_qqq/config.py`. Verify with `pytest tests/test_backtest.py tests/test_indicators.py tests/test_trailing_stop.py tests/test_engine_invariants.py tests/test_risk.py -v`.
+- **Task 0d:** `04_paper_trading/` — 9 files: `events.py`, `daily_risk_state.py`, `binance_testnet_client.py`, `telegram_alerts.py`, `run_once.py`, `agents/signal_agent.py`, `agents/execution_agent.py`, `agents/risk_agent.py`, `agents/data_agent.py`. This is the live production crypto paper-trading pipeline (real cron jobs running against real Binance Testnet) — verify with the full existing paper-trading test subset: `pytest tests/test_paper_trading_*.py tests/test_daily_risk_state.py tests/test_telegram_alerts.py tests/test_binance_testnet_client_rounding.py -v`.
+- **Task 0e:** `tests/` — 16 files: `test_telegram_alerts.py`, `test_paper_trading_data_agent.py`, `test_daily_risk_state.py`, `test_binance_testnet_client_rounding.py`, `test_paper_trading_run_once.py`, `test_engine_invariants.py`, `test_paper_trading_events.py`, `test_indicators.py`, `test_trailing_stop.py`, `test_paper_trading_signal_agent.py`, `test_paper_trading_risk_agent.py`, `test_backtest.py`, `test_paper_trading_execution_agent.py`, `conftest.py`, `test_binance_fetcher_parsing.py`, `test_risk.py`. These occurrences are all in docstrings/comments, not in string literals compared by assertions (confirmed during pre-flight, see above) — verify with the full suite: `pytest tests/ -v`.
+
+**After all five sub-tasks are reviewed clean:** run `pytest tests/ -v` once more (full suite) and `grep -rlE "—|「|」|→" --include="*.py" .` from the repo root to confirm zero remaining matches before proceeding to Task 1.
+
+---
+
 ## File Structure
 
 ```
@@ -129,9 +154,9 @@ Add a new dataclass after `FailEvent` (end of file):
 @dataclass
 class SubmittedEvent:
     """
-    execution_agent 確認委託已被交易所接受, 但尚未確認成交 — 美股開盤限價/市價委託單
+    execution_agent 確認委託已被交易所接受, 但尚未確認成交: 美股開盤限價/市價委託單
     (limit-on-open / market-on-open) 在收盤後送出時市場尚未開盤, 要等次日開盤拍賣才會撮合,
-    與加密貨幣市價單「送出即成交」的 FillEvent 語意不同, 故用獨立型別區分「已送出」與「已確認成交」
+    與加密貨幣市價單送出即成交的 FillEvent 語意不同, 故用獨立型別區分已送出與已確認成交
     """
 
     symbol: str
@@ -279,7 +304,7 @@ Per the Global Constraints, only `round_quantity_down_to_whole_shares` gets an a
 Create `tests/test_alpaca_paper_trading_client_rounding.py`:
 
 ```python
-"""alpaca_paper_trading_client 的純函數單元測試 — round_quantity_down_to_whole_shares, 不打真實網路請求"""
+"""alpaca_paper_trading_client 的純函數單元測試: round_quantity_down_to_whole_shares, 不打真實網路請求"""
 import alpaca_paper_trading_client
 
 
@@ -306,7 +331,7 @@ Create `04_paper_trading/alpaca_paper_trading_client.py`:
 
 ```python
 """
-Alpaca Paper Trading 交易客戶端 — 用 API-Key 標頭驗證的 REST 呼叫, 查詢帳戶, 倉位, 交易日曆與下單
+Alpaca Paper Trading 交易客戶端: 用 API-Key 標頭驗證的 REST 呼叫, 查詢帳戶, 倉位, 交易日曆與下單
 與 02_data/fetchers/alpaca_fetcher.py 的行情端點(data.alpaca.markets) 不同, 這裡打的是交易端點
 (paper-api.alpaca.markets), 但沿用同一組 .env 憑證(ALPACA_PAPER_API_KEY / ALPACA_PAPER_SECRET_KEY) .
 比 Binance 的 HMAC(Hash-based Message Authentication Code) 簽名簡單, 只需固定的兩個標頭, 不需組簽名字串
@@ -453,7 +478,7 @@ git commit -m "feat: add Alpaca Paper Trading REST client for US-stocks paper tr
 Create `tests/test_stock_data_agent.py`:
 
 ```python
-"""stock_data_agent.fetch_latest_daily_bars 的單元測試 — monkeypatch 掉真實網路請求, 只測組裝與長度檢查邏輯"""
+"""stock_data_agent.fetch_latest_daily_bars 的單元測試: monkeypatch 掉真實網路請求, 只測組裝與長度檢查邏輯"""
 import pandas as pd
 import pytest
 
@@ -517,10 +542,10 @@ Create `04_paper_trading/agents/stock_data_agent.py`:
 
 ```python
 """
-Stock data agent — 拉取最新美股日線, 供 signal_agent 產生即時信號用
+Stock data agent: 拉取最新美股日線, 供 signal_agent 產生即時信號用.
 重用 02_data/fetchers/alpaca_fetcher.py 的 fetch_full_history_daily_bars(已測試過的抓取邏輯), 以
-「今天往回推 LOOKBACK_CALENDAR_DAYS 個日曆天」當 start_date, 取回後只保留最後 lookback_bars 根,
-不重寫一套抓取邏輯, 與加密貨幣側 data_agent.py「重用既有抓取程式碼路徑」的精神一致
+今天往回推 LOOKBACK_CALENDAR_DAYS 個日曆天當 start_date, 取回後只保留最後 lookback_bars 根,
+不重寫一套抓取邏輯, 與加密貨幣側 data_agent.py 重用既有抓取程式碼路徑的精神一致.
 """
 import os
 import sys
@@ -587,7 +612,7 @@ git commit -m "feat: add stock_data_agent for US-stocks paper trading"
 Create `tests/test_stock_execution_agent.py`:
 
 ```python
-"""stock_execution_agent.execute 的單元測試 — monkeypatch 掉 alpaca_paper_trading_client 的真實網路呼叫"""
+"""stock_execution_agent.execute 的單元測試: monkeypatch 掉 alpaca_paper_trading_client 的真實網路呼叫"""
 import pytest
 import requests
 
@@ -685,11 +710,11 @@ Create `04_paper_trading/agents/stock_execution_agent.py`:
 
 ```python
 """
-Stock execution agent — 把核准的 OrderEvent 轉成真實 Alpaca Paper Trading 開盤委託單
+Stock execution agent: 把核准的 OrderEvent 轉成真實 Alpaca Paper Trading 開盤委託單.
 買進用開盤限價單(limit-on-open, LOO, 限價 = 收盤時算出的價格), 賣出(出場) 用開盤市價單
-(market-on-open, MOO) — 出場的目的是降低風險曝險, 保證成交比價格保護更重要, 見設計文件說明.
+(market-on-open, MOO): 出場的目的是降低風險曝險, 保證成交比價格保護更重要, 見設計文件說明.
 委託送出時市場尚未開盤, 不會立即成交, 回傳 SubmittedEvent(已送出, 未確認成交) 而非 FillEvent,
-成交與否留給次日執行時查詢真實倉位自然核對(見設計文件「次日的自然核對機制」)
+成交與否留給次日執行時查詢真實倉位自然核對(見設計文件的次日的自然核對機制段落).
 """
 import os
 import sys
@@ -784,7 +809,7 @@ git commit -m "feat: add stock_execution_agent submitting LOO/MOO orders to Alpa
 Create `tests/test_run_once_stocks.py`:
 
 ```python
-"""run_once_stocks.py 的編排邏輯測試 — monkeypatch 掉所有 agent 與外部狀態, 只驗證串接順序與紀錄格式正確"""
+"""run_once_stocks.py 的編排邏輯測試: monkeypatch 掉所有 agent 與外部狀態, 只驗證串接順序與紀錄格式正確"""
 from datetime import datetime, timezone
 
 import pandas as pd
@@ -961,11 +986,11 @@ Create `04_paper_trading/run_once_stocks.py`:
 
 ```python
 """
-Phase 3 紙上交易 (paper trading) 美股執行腳本 — 對 VOO 與 QQQ 兩個標的一次執行
-data → signal → risk → execution. 與加密貨幣側 run_once.py 架構相同, 差異只在資料來源/執行客戶端
+Phase 3 紙上交易 (paper trading) 美股執行腳本: 對 VOO 與 QQQ 兩個標的一次執行.
+資料流程依序是 data, signal, risk, execution. 與加密貨幣側 run_once.py 架構相同, 差異只在資料來源/執行客戶端
 換成 Alpaca, 且核准的開倉單一律走開盤限價/市價委託(limit-on-open / market-on-open), 不做立即市價單.
 開頭先檢查今天是否為美股交易日(用美東時間計算, 不依賴伺服器本地時區, 見 US_EASTERN_TIMEZONE),
-非交易日安靜跳過, 不產生信號也不查帳戶
+非交易日安靜跳過, 不產生信號也不查帳戶.
 用法: python run_once_stocks.py
 """
 import json
@@ -994,7 +1019,7 @@ LOG_FILE_PATH = os.path.join(_paper_trading_directory, "logs", "run_log_stocks.j
 DAILY_STATE_FILE_PATH = os.path.join(
     _paper_trading_directory, "logs", "daily_risk_state_stocks.json"
 )
-# 用美東時間(而非伺服器本地時區) 判斷「今天」是哪個交易日: 伺服器在 Asia/Hong_Kong, 收盤後(美東 16:35)
+# 用美東時間(而非伺服器本地時區) 判斷今天是哪個交易日: 伺服器在 Asia/Hong_Kong, 收盤後(美東 16:35)
 # 執行時, 香港當地已跨到隔天, 若用伺服器本地日期查交易日曆會查錯日期; zoneinfo 自動處理夏令/冬令時間轉換
 US_EASTERN_TIMEZONE = ZoneInfo("America/New_York")
 
@@ -1631,8 +1656,8 @@ Create `04_paper_trading/monitor_stocks.py`:
 """
 Phase 3 紙上交易 (paper trading) 美股每日報告 (monitor): 讀取 run_log_stocks.jsonl 中前一個美東交易日
 的執行紀錄, 彙總成每日報告透過 Telegram 發送. 由獨立 crontab 於次日美股開盤前觸發.
-與加密貨幣版 monitor.py 的關鍵差異: 這裡顯示的是「已送出的開盤委託」(SubmittedEvent, 尚未確認成交),
-不是「已確認成交」; 是否成交由「今日實際持倉」(來自查詢到的真實 Alpaca 倉位) 間接反映
+與加密貨幣版 monitor.py 的關鍵差異: 這裡顯示的是已送出的開盤委託(SubmittedEvent, 尚未確認成交),
+不是已確認成交; 是否成交由今日實際持倉(來自查詢到的真實 Alpaca 倉位) 間接反映.
 見設計文件 docs/superpowers/specs/2026-07-10-phase3-us-stocks-paper-trading-design.md
 用法: python3 monitor_stocks.py
 """
