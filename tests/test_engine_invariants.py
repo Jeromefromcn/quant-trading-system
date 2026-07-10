@@ -1,12 +1,12 @@
 """
-回測引擎不變量(invariant) 測試 — 用「性質」而非「逐筆核對真實數據」來驗證引擎正確性
+回測引擎不變量(invariant) 測試: 用性質而非逐筆核對真實數據來驗證引擎正確性
 人類只需 review 這些不變量的邏輯(固定, 可讀) , 機器則對所有數據窮舉驗證, 取代人工抽查 10 筆交易
 
 不變量分兩類:
 - 內部一致性: 引擎自身或引擎與輸入數據之間必須恆成立的關係(換手成本, 淨值守恆, 倉位上限等)
-- 前視偏差防護: 用截斷法(metamorphic testing) 證明「未來數據不影響過去結果」, 這是人工無法做到的窮舉檢查
+- 前視偏差防護: 用截斷法(metamorphic testing) 證明未來數據不影響過去結果, 這是人工無法做到的窮舉檢查
 
-注意: 這些不變量只能證明「引擎與輸入數據一致」(verification) , 無法證明「輸入數據符合真實市場」
+注意: 這些不變量只能證明引擎與輸入數據一致(verification) , 無法證明輸入數據符合真實市場
 (validation) . 後者需要對數據源做一次外部錨定, 見 02_data/validate_against_independent_source.py
 """
 
@@ -53,7 +53,7 @@ def test_dataset_actually_produces_multiple_trades(oscillating_ohlcv, strategy):
 
 def test_all_trades_reconcile_with_source_prices(oscillating_ohlcv, strategy):
     """
-    自動化版的「人工核對交易」: 對每一筆交易(不只 10 筆) 驗證
+    自動化版的人工核對交易: 對每一筆交易(不只 10 筆) 驗證
     進場價等於進場日的收盤價, 出場價等於出場日的收盤價
     進場日為信號當根 K 線(已 shift) , 其收盤價即引擎鎖定的進場成交價
     """
@@ -67,7 +67,7 @@ def test_all_trades_reconcile_with_source_prices(oscillating_ohlcv, strategy):
 
 
 class SignalOnStrategy(Strategy):
-    """測試用策略: 只在指定的那一根 K 線發出做多信號, 其餘時間空手, 用來精準定位「哪一根被交易」"""
+    """測試用策略: 只在指定的那一根 K 線發出做多信號, 其餘時間空手, 用來精準定位哪一根被交易"""
 
     name = "signal_on_single_bar"
 
@@ -118,7 +118,7 @@ def test_no_future_data_leakage_by_truncation(
     """
     前視偏差防護之一: 未來數據洩漏的窮舉證明(metamorphic test)
     砍掉截斷點之後的所有未來數據, 重跑引擎, 截斷點之前的每日策略報酬必須與完整數據的前綴逐值相同
-    專門抓「第 t 根結果依賴到 t 之後數據」這類洩漏(如全樣本 max/min, 置中窗口, bfill, 全樣本擬合參數)
+    專門抓第 t 根結果依賴到 t 之後數據這類洩漏(如全樣本 max/min, 置中窗口, bfill, 全樣本擬合參數)
     抓不到同根時序錯誤(見上一條測試) , 兩條不變量互補, 合起來覆蓋前視偏差的兩大類
     這是人工逐筆核對永遠做不到的窮舉檢查, 卻是一條固定, 可讀的不變量
     """

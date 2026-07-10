@@ -1,4 +1,4 @@
-"""execution_agent.execute 的單元測試 — monkeypatch 掉 binance_testnet_client 的真實網路呼叫"""
+"""execution_agent.execute 的單元測試: monkeypatch 掉 binance_testnet_client 的真實網路呼叫"""
 import pytest
 import requests
 

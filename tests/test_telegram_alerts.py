@@ -1,4 +1,4 @@
-"""telegram_alerts.send_alert 的單元測試 — monkeypatch 掉 requests.post, 不打真實網路請求"""
+"""telegram_alerts.send_alert 的單元測試: monkeypatch 掉 requests.post, 不打真實網路請求"""
 import telegram_alerts
 
 

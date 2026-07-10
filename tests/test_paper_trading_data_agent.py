@@ -1,4 +1,4 @@
-"""data_agent.fetch_latest_candles 的單元測試 — monkeypatch 掉真實網路請求, 只測試組裝與長度檢查邏輯"""
+"""data_agent.fetch_latest_candles 的單元測試: monkeypatch 掉真實網路請求, 只測試組裝與長度檢查邏輯"""
 import pandas as pd
 import pytest
 

@@ -1,4 +1,4 @@
-"""run_once.py 的編排邏輯測試 — monkeypatch 掉所有 agent 與外部狀態, 只驗證串接順序與紀錄格式正確"""
+"""run_once.py 的編排邏輯測試: monkeypatch 掉所有 agent 與外部狀態, 只驗證串接順序與紀錄格式正確"""
 import json
 from datetime import datetime, timezone
 

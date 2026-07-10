@@ -1,4 +1,4 @@
-"""risk_agent 的單元測試 — 涵蓋三種結果分支: 無動作, 核准下單(買/賣) , 風控擋下"""
+"""risk_agent 的單元測試. 涵蓋三種結果分支: 無動作, 核准下單(買/賣) , 風控擋下"""
 from datetime import datetime, timedelta, timezone
 
 import pandas as pd

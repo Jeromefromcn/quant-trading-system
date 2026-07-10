@@ -1,4 +1,4 @@
-"""daily_risk_state 的單元測試 — 純函式的重置判斷邏輯, 以及本機檔案 I/O 的讀寫往返"""
+"""daily_risk_state 的單元測試: 純函式的重置判斷邏輯, 以及本機檔案 I/O 的讀寫往返"""
 import os
 
 import daily_risk_state

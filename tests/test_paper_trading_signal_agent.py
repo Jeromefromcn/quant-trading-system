@@ -1,4 +1,4 @@
-"""signal_agent.decide 的單元測試 — 用手造的確定性價格序列驗證多單/空手判斷與事件欄位"""
+"""signal_agent.decide 的單元測試: 用手造的確定性價格序列驗證多單/空手判斷與事件欄位"""
 import numpy as np
 import pandas as pd
 
@@ -46,7 +46,7 @@ def test_decide_reports_flat_when_price_is_flat():
 
 def test_decide_reports_flat_when_crossover_occurs_but_adx_is_below_threshold():
     # 有淨上漲的震盪走勢: 快線持續在慢線之上(純 EMA 交叉會判多) , 但反覆震盪讓 ADX 維持在低檔(遠低於門檻 25) ,
-    # 這是 exp_002 相對 exp_001 的核心差異 — 濾掉盤整假突破, 必須驗證這個過濾確實生效
+    # 這是 exp_002 相對 exp_001 的核心差異: 濾掉盤整假突破, 必須驗證這個過濾確實生效
     time_index = np.arange(120)
     closes = 100 + 0.05 * time_index + 3.0 * np.sin(time_index * 0.9)
     ohlcv_dataframe = _make_ohlcv(closes)

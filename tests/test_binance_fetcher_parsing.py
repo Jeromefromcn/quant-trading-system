@@ -1,4 +1,4 @@
-"""binance_fetcher.py 純解析邏輯的單元測試 — 不打真實網路請求, 用手造的假 K 線陣列驗證"""
+"""binance_fetcher.py 純解析邏輯的單元測試: 不打真實網路請求, 用手造的假 K 線陣列驗證"""
 import pandas as pd
 
 from binance_fetcher import drop_unclosed_last_candle, parse_klines_to_ohlcv_dataframe

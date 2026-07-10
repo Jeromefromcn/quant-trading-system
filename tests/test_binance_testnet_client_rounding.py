@@ -1,5 +1,5 @@
 """
-binance_testnet_client 兩個純函數的單元測試 — round_quantity_to_step_size 與 _format_quantity_for_request,
+binance_testnet_client 兩個純函數的單元測試: round_quantity_to_step_size 與 _format_quantity_for_request,
 不打真實網路請求
 """
 import pytest

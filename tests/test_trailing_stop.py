@@ -1,8 +1,8 @@
 """
-移動止損出場 (ATR trailing stop exit) 的行為測試 — 引擎新功能
+移動止損出場 (ATR trailing stop exit) 的行為測試: 引擎新功能
 語義 (見 STRATEGY_LOG / exp_004): 進場沿用策略信號上升緣, 出場改由移動止損接管並取代 EMA 出場;
-止損被掃出後, 須等原始信號重新 0→1 才准再進場 (再進場鎖定); 關閉時引擎行為與原本逐位元一致.
-用手工構造的確定價格序列精準定位「哪一根被交易」, 風格對齊 test_engine_invariants.py.
+止損被掃出後, 須等原始信號重新從 0 轉為 1 才准再進場 (再進場鎖定); 關閉時引擎行為與原本逐位元一致.
+用手工構造的確定價格序列精準定位哪一根被交易, 風格對齊 test_engine_invariants.py.
 """
 
 import numpy as np
@@ -45,7 +45,7 @@ class LongWindows(Strategy):
 
 
 def test_trailing_stop_exits_on_large_pullback_and_does_not_reenter():
-    """大幅回落觸發移動止損出場; 信號雖整段為 1, 停損後無新上升緣 → 不得再進場, 只有一筆交易"""
+    """大幅回落觸發移動止損出場; 信號雖整段為 1, 停損後無新上升緣, 因此不得再進場, 只有一筆交易"""
     closes = [100.0] * 30 + list(np.linspace(105, 150, 10)) + [110.0] * 10
     ohlcv = make_ohlcv(closes)
     strategy = LongWindows([(30, len(closes))])
@@ -61,7 +61,7 @@ def test_trailing_stop_exits_on_large_pullback_and_does_not_reenter():
 
 
 def test_trailing_stop_does_not_exit_while_price_keeps_rising():
-    """單調上漲時收盤永遠是新高, 止損線恆在收盤之下 → 不觸發, 持有到最後一根"""
+    """單調上漲時收盤永遠是新高, 止損線恆在收盤之下, 因此不觸發, 持有到最後一根"""
     closes = [100.0] * 30 + list(np.linspace(101, 200, 40))
     ohlcv = make_ohlcv(closes)
     strategy = LongWindows([(30, len(closes))])
@@ -88,7 +88,7 @@ def test_trailing_stop_holds_past_ema_exit_signal():
         trailing_stop_atr_multiplier=None, fee_rate=0.0, slippage_rate=0.0
     ).run(ohlcv, strategy)
 
-    # 關閉: 信號轉 0 於 bar 40 → 該處出場; 開啟: 忽略信號轉 0, 持有到最後
+    # 關閉: 信號轉 0 於 bar 40, 即在該處出場; 開啟: 忽略信號轉 0, 持有到最後
     assert (
         without_trailing.trades.iloc[0]["exit_date"]
         < with_trailing.trades.iloc[0]["exit_date"]
@@ -97,7 +97,7 @@ def test_trailing_stop_holds_past_ema_exit_signal():
 
 
 def test_trailing_stop_reenters_only_on_fresh_entry_signal():
-    """停損掃出後, 唯有原始信號重新 0→1 才准第二次進場 → 兩段獨立行情產生兩筆交易"""
+    """停損掃出後, 唯有原始信號重新從 0 轉為 1 才准第二次進場, 因此兩段獨立行情產生兩筆交易"""
     closes = (
         [100.0] * 30
         + list(np.linspace(105, 150, 10))  # 30..39 上漲到峰值
@@ -105,7 +105,7 @@ def test_trailing_stop_reenters_only_on_fresh_entry_signal():
         + list(np.linspace(112, 160, 15))  # 45..59 回升
     )
     ohlcv = make_ohlcv(closes)
-    # 信號 30..44 為 1 (含崩盤), 45..49 歸零, 50 起再度為 1 → 於 bar 50 產生新上升緣
+    # 信號 30..44 為 1 (含崩盤), 45..49 歸零, 50 起再度為 1, 因此於 bar 50 產生新上升緣
     strategy = LongWindows([(30, 45), (50, len(closes))])
     engine = BacktestEngine(
         trailing_stop_atr_multiplier=3.0, fee_rate=0.0, slippage_rate=0.0

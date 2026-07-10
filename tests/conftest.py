@@ -1,5 +1,5 @@
 """
-pytest 共用設定 — 把 03_research 下以數字開頭(無法當 Python 套件) 的模組目錄加入搜尋路徑
+pytest 共用設定: 把 03_research 下以數字開頭(無法當 Python 套件) 的模組目錄加入搜尋路徑
 讓測試能直接 import volatility, trend, momentum, base, trend_following, engine, metrics, report
 """
 

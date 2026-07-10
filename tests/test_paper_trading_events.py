@@ -1,4 +1,4 @@
-"""events.py 的型別化事件 (typed events) 冒煙測試 — 確保每個事件的欄位不被意外改名或刪除"""
+"""events.py 的型別化事件 (typed events) 冒煙測試: 確保每個事件的欄位不被意外改名或刪除"""
 from datetime import datetime, timezone
 
 from events import FailEvent, FillEvent, OrderEvent, RejectionEvent, SignalEvent
