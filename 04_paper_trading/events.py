@@ -24,6 +24,7 @@ class OrderEvent:
     symbol: str
     side: str  # "BUY" 或 "SELL"
     quantity: float
+    limit_price: float | None = None  # 僅美股開盤限價單(limit-on-open, LOO) 使用; 加密貨幣市價單維持 None
 
 
 @dataclass
@@ -56,3 +57,18 @@ class FailEvent:
     symbol: str
     reason: str
     raw_exchange_response: str
+
+
+@dataclass
+class SubmittedEvent:
+    """
+    execution_agent 確認委託已被交易所接受, 但尚未確認成交: 美股開盤限價/市價委託單
+    (limit-on-open / market-on-open) 在收盤後送出時市場尚未開盤, 要等次日開盤拍賣才會撮合,
+    與加密貨幣市價單送出即成交的 FillEvent 語意不同, 故用獨立型別區分已送出與已確認成交
+    """
+
+    symbol: str
+    side: str
+    quantity: float
+    order_id: str
+    limit_price: float | None = None  # 市價委託 (market-on-open, MOO) 無限價, 維持 None

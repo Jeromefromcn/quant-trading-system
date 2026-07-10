@@ -1,7 +1,7 @@
 """events.py 的型別化事件 (typed events) 冒煙測試: 確保每個事件的欄位不被意外改名或刪除"""
 from datetime import datetime, timezone
 
-from events import FailEvent, FillEvent, OrderEvent, RejectionEvent, SignalEvent
+from events import FailEvent, FillEvent, OrderEvent, RejectionEvent, SignalEvent, SubmittedEvent
 
 
 def test_signal_event_holds_all_fields():
@@ -70,3 +70,29 @@ def test_fill_event_holds_commission_when_provided():
     )
     assert fill_event.commission == 1.25
     assert fill_event.commission_asset == "USDT"
+
+
+def test_order_event_defaults_limit_price_to_none():
+    order_event = OrderEvent(symbol="BTCUSDT", side="BUY", quantity=0.01)
+    assert order_event.limit_price is None
+
+
+def test_order_event_holds_limit_price_when_provided():
+    order_event = OrderEvent(symbol="VOO", side="BUY", quantity=10, limit_price=550.25)
+    assert order_event.limit_price == 550.25
+
+
+def test_submitted_event_holds_all_fields():
+    submitted_event = SubmittedEvent(
+        symbol="VOO", side="BUY", quantity=10.0, order_id="abc123", limit_price=550.25
+    )
+    assert submitted_event.symbol == "VOO"
+    assert submitted_event.side == "BUY"
+    assert submitted_event.quantity == 10.0
+    assert submitted_event.order_id == "abc123"
+    assert submitted_event.limit_price == 550.25
+
+
+def test_submitted_event_defaults_limit_price_to_none():
+    submitted_event = SubmittedEvent(symbol="VOO", side="SELL", quantity=10.0, order_id="abc123")
+    assert submitted_event.limit_price is None
