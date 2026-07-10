@@ -1,5 +1,5 @@
 """
-Alpaca 美股歷史日線抓取器 — 從 Alpaca Market Data API 抓取指定股票的調整後歷史日線
+Alpaca 美股歷史日線抓取器: 從 Alpaca Market Data API 抓取指定股票的調整後歷史日線
 需要 Alpaca API Key(從 .env 讀取, 不入 Git) . 免費方案使用 IEX 數據源, 歷史可回溯到約 2016 年
 使用 adjustment=all 取得還原權息後的調整價格, 回測股票時必須用調整價才不會被除權除息扭曲報酬
 Alpaca 單次最多回傳 10000 根, 超過時用 next_page_token 分頁往後累積

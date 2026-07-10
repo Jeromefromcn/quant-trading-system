@@ -1,5 +1,5 @@
 """
-Binance 歷史 K 線抓取器 — 從 Binance 公開行情 API 分頁抓取指定交易對的完整歷史日線
+Binance 歷史 K 線抓取器: 從 Binance 公開行情 API 分頁抓取指定交易對的完整歷史日線
 公開行情端點不需要 API Key. Binance 單次最多回傳 1000 根 K 線, 需用 startTime 分頁往後累積,
 直到抓到最新一根. 抓下來的數據存到本地 cache(被 gitignore) , 供研究層重複讀取, 不必每次重打 API
 本檔的請求與解析函式 (request_klines_batch, parse_klines_to_ohlcv_dataframe, drop_unclosed_last_candle)
@@ -39,7 +39,7 @@ def request_klines_batch(
 ) -> list:
     """
     打一次 Binance 公開 K 線端點, 回傳原始 (未解析) 的 K 線陣列列表
-    參數 start_time_milliseconds 為 None 時, Binance 回傳「最新」的 limit 根 K 線 (不分頁, 供即時抓取用)
+    參數 start_time_milliseconds 為 None 時, Binance 回傳最新的 limit 根 K 線 (不分頁, 供即時抓取用)
     給定 start_time_milliseconds 時, 回傳從該時間點開始的 limit 根 (供歷史分頁抓取用)
     """
     request_parameters = {"symbol": symbol, "interval": interval, "limit": limit}
