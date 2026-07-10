@@ -1,8 +1,8 @@
 """
-趨勢跟蹤策略 — EMA(Exponential Moving Average, 指數移動平均線) 雙均線交叉, 可選 ADX 趨勢強度過濾
+趨勢跟蹤策略: EMA(Exponential Moving Average, 指數移動平均線) 雙均線交叉, 可選 ADX 趨勢強度過濾
 進場邏輯: 快線在慢線之上代表多頭排列, 持有多單; 快線跌回慢線之下則空手
 可選過濾: 加入 ADX(Average Directional Index, 平均趨向指標) 門檻, 只在趨勢明確時進場, 減少盤整市假信號
-這是 Phase 2 第一輪要建立基準(baseline) 的策略, 對應 ROADMAP「EMA 雙均線基準版」
+這是 Phase 2 第一輪要建立基準(baseline) 的策略, 對應 ROADMAP EMA 雙均線基準版
 """
 
 import os

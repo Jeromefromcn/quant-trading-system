@@ -1,5 +1,5 @@
 """
-實驗設定範本 — 請勿直接執行本檔; 用 new_experiment.py 生成新實驗資料夾後再改參數.
+實驗設定範本: 請勿直接執行本檔; 用 new_experiment.py 生成新實驗資料夾後再改參數.
 只放參數, 不放邏輯. 生成後改下面數值即可.
 執行: 直接 python config.py (資料夾名字自動當實驗名), 或 python ../run_experiment.py <資料夾名>
 """

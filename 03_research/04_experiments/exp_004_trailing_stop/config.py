@@ -1,5 +1,5 @@
 """
-exp_004 EMA + ADX + ATR 移動止損 — 承接 exp_002 (best-so-far), 維持快速進場, 出場改由 3×ATR 移動止損接管
+exp_004 EMA + ADX + ATR 移動止損: 承接 exp_002 (best-so-far), 維持快速進場, 出場改由 3×ATR 移動止損接管
 假設: exp_003 證明放慢慢線會連進場一起拖慢; 移動止損解耦進出場(快進場 + 只在真反轉才出), 抱住趨勢更久拉高 CAGR, 把 Sharpe 過 1.0
 策略參數與 exp_002 完全相同; 唯一改動是引擎啟用 trailing_stop_atr_multiplier=3.0 (取代 EMA 出場)
 執行: 直接 python config.py (資料夾名字自動當實驗名), 或 python ../run_experiment.py exp_004_trailing_stop

@@ -1,9 +1,9 @@
 """
-實驗執行器 — 統一跑一個實驗資料夾的回測, 讓每次實驗只需一行指令
+實驗執行器: 統一跑一個實驗資料夾的回測, 讓每次實驗只需一行指令
 用法: python run_experiment.py exp_001_ema_baseline
 
-流程: 讀該實驗資料夾的 config.py → 載入數據 → 建策略與引擎 → 跑 70/30 樣本內外分割回測
-     → 寫出 results.json(樣本內外指標) , 樣本內外淨值曲線圖, 逐筆交易 CSV, 以及 notes.md 骨架
+流程: 讀該實驗資料夾的 config.py, 載入數據, 建策略與引擎, 跑 70/30 樣本內外分割回測,
+     再寫出 results.json(樣本內外指標) , 樣本內外淨值曲線圖, 逐筆交易 CSV, 以及 notes.md 骨架
 假設(hypothesis) 與結論(conclusion) 由你在 notes.md 與 STRATEGY_LOG.md 手寫, 執行器不代寫.
 """
 

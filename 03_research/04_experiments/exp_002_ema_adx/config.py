@@ -1,5 +1,5 @@
 """
-exp_002 EMA 雙均線 + ADX 趨勢過濾 — 相對 exp_001 只改一個變數: adx_threshold 0 → 25
+exp_002 EMA 雙均線 + ADX 趨勢過濾: 相對 exp_001 只改一個變數, adx_threshold 由 0 改為 25
 假設: 只在趨勢明確 (ADX > 25) 時進場, 濾掉盤整市假交叉, 把樣本外 Sharpe 推過 1.0
 其餘參數 (數據, EMA 12/26, 引擎, 70/30 分割) 全部與 exp_001 相同, 以便乾淨歸因
 執行: 直接 python config.py (資料夾名字自動當實驗名), 或 python ../run_experiment.py exp_002_ema_adx

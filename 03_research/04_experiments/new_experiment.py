@@ -1,5 +1,5 @@
 """
-實驗生成器 — 從 _template/config.py 蓋出一個新實驗資料夾, 保證每個實驗的 config.py 一致
+實驗生成器: 從 _template/config.py 蓋出一個新實驗資料夾, 保證每個實驗的 config.py 一致
 用法: python new_experiment.py exp_003_rsi_filter   (省略名稱則啟動後由鍵盤輸入)
 
 只複製範本, 不代填參數與假設; 生成後改 config.py 的參數, 再跑實驗.

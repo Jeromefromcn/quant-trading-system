@@ -1,6 +1,6 @@
 """
-回測報告輸出 — 把 BacktestResult 存成標準化的 JSON 績效報告與淨值曲線圖
-對應 ROADMAP「標準化輸出: JSON 格式績效報告 + 淨值曲線圖」與每次實驗保存 results.json 的工作流
+回測報告輸出: 把 BacktestResult 存成標準化的 JSON 績效報告與淨值曲線圖
+對應 ROADMAP 標準化輸出: JSON 格式績效報告 + 淨值曲線圖, 與每次實驗保存 results.json 的工作流
 """
 
 import json

@@ -1,5 +1,5 @@
 """
-趨勢指標庫 — 衡量價格趨勢方向與強度的向量化指標函數
+趨勢指標庫: 衡量價格趨勢方向與強度的向量化指標函數
 所有函數只依賴 pandas 與 numpy, 全部向量化, 無 for loop, 無逐列 if-else
 """
 
@@ -16,14 +16,14 @@ from volatility import true_range
 
 def simple_moving_average(close_price: pd.Series, period: int) -> pd.Series:
     """
-    SMA(Simple Moving Average, 簡單移動平均線) — 過去 period 天收盤價的算術平均, 每天權重相同
+    SMA(Simple Moving Average, 簡單移動平均線): 過去 period 天收盤價的算術平均, 每天權重相同
     """
     return close_price.rolling(window=period).mean()
 
 
 def exponential_moving_average(close_price: pd.Series, span: int) -> pd.Series:
     """
-    EMA(Exponential Moving Average, 指數移動平均線) — 越接近今天權重越高, 對近期價格反應較快
+    EMA(Exponential Moving Average, 指數移動平均線): 越接近今天權重越高, 對近期價格反應較快
     adjust=False 代表用遞迴公式逐天計算, 是業界計算 EMA 的慣用設定
     """
     return close_price.ewm(span=span, adjust=False).mean()
@@ -36,7 +36,7 @@ def average_directional_index(
     period: int = 14,
 ) -> pd.Series:
     """
-    ADX(Average Directional Index, 平均趨向指標) — 衡量趨勢的強度, 不區分方向, 範圍 0 到 100
+    ADX(Average Directional Index, 平均趨向指標): 衡量趨勢的強度, 不區分方向, 範圍 0 到 100
     常用門檻: ADX > 25 代表趨勢明確, 適合趨勢跟蹤策略進場; ADX 偏低代表盤整, 均線交叉容易產生假信號
     算法(J. Welles Wilder 1978) : 由 +DM / -DM(方向性移動) 與 True Range 經威爾德平滑後推導
     """

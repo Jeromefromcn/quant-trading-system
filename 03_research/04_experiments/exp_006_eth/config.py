@@ -1,5 +1,5 @@
 """
-exp_006 跨市場驗證 — 凍結的 exp_002 (best-so-far) 原封不動搬到 ETH/USDT, 檢驗優勢能否泛化
+exp_006 跨市場驗證: 凍結的 exp_002 (best-so-far) 原封不動搬到 ETH/USDT, 檢驗優勢能否泛化
 策略與引擎參數與 exp_002 逐項相同, 只換數據為 ETH; 不得為 ETH 調任何參數 (調了就把這個乾淨市場燒成驗證集)
 這是跨市場泛化測試 (exp_006-008 之一, 對應 ROADMAP Round 1 跨市場基準), 一次跑完, 結果照單全收
 執行: 直接 python config.py (資料夾名字自動當實驗名), 或 python ../run_experiment.py exp_006_eth

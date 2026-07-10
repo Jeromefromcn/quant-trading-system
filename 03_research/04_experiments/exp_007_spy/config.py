@@ -1,5 +1,5 @@
 """
-exp_007 跨市場驗證 — 凍結的 exp_002 (best-so-far) 搬到美股 SPY, 檢驗優勢能否跨資產類別泛化
+exp_007 跨市場驗證: 凍結的 exp_002 (best-so-far) 搬到美股 SPY, 檢驗優勢能否跨資產類別泛化
 策略參數與 exp_002 逐項相同, 只換數據為 SPY; 引擎唯一調整 trading_days_per_year=252 (美股年化正確性修正, 非調參)
 費率故意維持 Binance 0.1% (對股票偏保守/高估成本; 若在高估成本下仍成立則證據更強, 也避免調低成本讓股票好看的嫌疑)
 不得為 SPY 調任何策略參數 (調了就把這個乾淨市場燒成驗證集). exp_006-008 之一
@@ -19,7 +19,7 @@ STRATEGY_PARAMS = {
     "adx_threshold": 25.0,
 }
 
-# 引擎參數: 同 exp_002; 唯一改動 trading_days_per_year 365 → 252 (美股一年約 252 交易日, 純年化正確性修正)
+# 引擎參數: 同 exp_002; 唯一改動 trading_days_per_year, 由 365 改為 252 (美股一年約 252 交易日, 純年化正確性修正)
 ENGINE_PARAMS = {
     "initial_capital": 10_000.0,
     "risk_per_trade_percentage": 0.01,

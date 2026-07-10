@@ -1,7 +1,7 @@
 """
-exp_005 緊移動止損 (1.5×ATR) — 測「贏錢就跑」: 與 exp_004 相同, 只把移動止損倍數 3.0 → 1.5
-假設: exp_003/004 證明「抱久」有害, 反方向「早點跑、少回吐」或許有利, 讓小回落就出場, 拉高 Sharpe
-與 exp_002 相比只多一個緊移動止損; 與 exp_004 相比只差止損倍數 (3.0→1.5), 兩面都是乾淨單變數對照
+exp_005 緊移動止損 (1.5×ATR): 測贏錢就跑, 與 exp_004 相同, 只把移動止損倍數由 3.0 改為 1.5
+假設: exp_003/004 證明抱久有害, 反方向早點跑、少回吐或許有利, 讓小回落就出場, 拉高 Sharpe
+與 exp_002 相比只多一個緊移動止損; 與 exp_004 相比只差止損倍數 (3.0 改為 1.5), 兩面都是乾淨單變數對照
 警告: 早出場會砍掉趨勢的大贏家, 違背趨勢跟蹤核心邏輯, 結果未知; 且此為 BTC 樣本外第 5 次使用
 執行: 直接 python config.py (資料夾名字自動當實驗名), 或 python ../run_experiment.py exp_005_tight_trailing
 """
@@ -19,7 +19,7 @@ STRATEGY_PARAMS = {
     "adx_threshold": 25.0,
 }
 
-# 引擎參數: 同 exp_004; 唯一改動 trailing_stop_atr_multiplier 3.0 → 1.5 (更早出場, 少回吐 = 贏錢就跑)
+# 引擎參數: 同 exp_004; 唯一改動 trailing_stop_atr_multiplier, 由 3.0 改為 1.5 (更早出場, 少回吐 = 贏錢就跑)
 ENGINE_PARAMS = {
     "initial_capital": 10_000.0,
     "risk_per_trade_percentage": 0.01,

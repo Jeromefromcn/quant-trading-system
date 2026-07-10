@@ -1,5 +1,5 @@
 """
-exp_001 EMA 雙均線基準版 — Round 1 建立基準的第一個實驗, 測 BTC/USDT 日線
+exp_001 EMA 雙均線基準版: Round 1 建立基準的第一個實驗, 測 BTC/USDT 日線
 只放參數, 不放邏輯; 下一個實驗複製本檔改參數即可.
 執行: 直接 python config.py (資料夾名字自動當實驗名), 或 python ../run_experiment.py exp_001_ema_baseline
 """

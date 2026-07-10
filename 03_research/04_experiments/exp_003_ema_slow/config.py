@@ -1,5 +1,5 @@
 """
-exp_003 EMA 慢線延長 — 承接 exp_002 (best-so-far, adx=25), 只改一個變數: slow_span 26 → 50
+exp_003 EMA 慢線延長: 承接 exp_002 (best-so-far, adx=25), 只改一個變數, slow_span 由 26 改為 50
 假設: 慢線更長使進出場更遲鈍, 趨勢單較不被短期回彈洗出場, 騎更長趨勢段以提高 CAGR, 把 Sharpe 推向 1.0
 其餘 (數據, fast_span=12, adx_threshold=25, 引擎, 70/30 分割) 全部與 exp_002 相同, 以便乾淨歸因
 執行: 直接 python config.py (資料夾名字自動當實驗名), 或 python ../run_experiment.py exp_003_ema_slow
@@ -10,7 +10,7 @@ DATASET = "btc_usdt_1d.csv"
 
 # 策略: 對應 run_experiment.py 的 STRATEGY_REGISTRY
 STRATEGY = "trend_following"
-# 策略參數: 承接 exp_002 (fast 12, adx 25); 唯一改動 slow_span 26 → 50 (慢線延長, 讓趨勢單跑更久)
+# 策略參數: 承接 exp_002 (fast 12, adx 25); 唯一改動 slow_span, 由 26 改為 50 (慢線延長, 讓趨勢單跑更久)
 STRATEGY_PARAMS = {
     "fast_span": 12,
     "slow_span": 50,

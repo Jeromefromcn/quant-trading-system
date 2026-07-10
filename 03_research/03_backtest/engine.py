@@ -1,5 +1,5 @@
 """
-回測引擎 — 把一個策略的倉位信號, 在一份 OHLCV(開高低收量) 數據上跑成一條可評估的淨值曲線
+回測引擎: 把一個策略的倉位信號, 在一份 OHLCV(開高低收量) 數據上跑成一條可評估的淨值曲線
 對應 ROADMAP Phase 2 第一週的引擎規格:
 - 手續費模擬: 預設 Binance Taker 0.1%
 - 滑點模擬: 每筆交易加 0.05% 保守估算
@@ -7,7 +7,7 @@
 - 樣本劃分: 前 70% 樣本內(調參) , 後 30% 樣本外(驗證)
 - 前視偏差防護: 統一把策略信號 shift(1) 後才用於交易, 策略層不做位移
 
-倉位大小以「佔賬戶淨值的比例(position fraction) 」表示, 便於向量化計算淨值曲線:
+倉位大小以佔賬戶淨值的比例(position fraction) 表示, 便於向量化計算淨值曲線:
 單位數 = (賬戶 × 每筆風險) / (止損倍數 × ATR) , 佔比 = 單位數 × 價格 / 賬戶 = 每筆風險 × 價格 / (止損倍數 × ATR)
 佔比與賬戶規模無關, 且會被限制在 max_position_fraction 以內, 避免低波動時算出超過 100% 的槓桿倉位
 """
@@ -60,7 +60,7 @@ def compute_position_fraction(
     max_position_fraction: float,
 ) -> pd.Series:
     """
-    固定風險倉位法算出每天「若在當天進場, 應投入賬戶淨值的多少比例」
+    固定風險倉位法算出每天若在當天進場, 應投入賬戶淨值的多少比例
     佔比 = 每筆風險比例 × 價格 / (止損倍數 × ATR) , 波動(ATR) 越大佔比越小, 自動控制單筆風險
     上限 max_position_fraction 防止低波動時出現超過 100% 的槓桿倉位(現貨不做槓桿)
     """
@@ -76,13 +76,13 @@ def apply_trailing_stop_exit(
     trailing_stop_atr_multiplier: float,
 ) -> pd.Series:
     """
-    把「純進場信號」轉成「移動止損 (trailing stop) 接管出場」後的目標持倉序列 (未 shift, 交給引擎統一 shift)
-    語義: 進場沿用原始信號的上升緣 (0→1); 進場後忽略原始信號轉 0, 由移動止損取代 EMA 出場;
+    把純進場信號轉成移動止損 (trailing stop) 接管出場後的目標持倉序列 (未 shift, 交給引擎統一 shift)
+    語義: 進場沿用原始信號從 0 變為 1 的上升緣; 進場後忽略原始信號轉 0, 由移動止損取代 EMA 出場;
     每根用當前 ATR 把止損線往上棘輪 (ratchet, 只增不減); 收盤跌破截至前一根的止損線即出場;
-    出場後保持空手, 直到原始信號重新 0→1 才准再進場 (再進場鎖定, 避免剛停損下一根又買回)
-    路徑依賴 (依進場後的走勢), 無法乾淨向量化 → 引擎執行層以有界 O(n) 迴圈實現;
-    這屬引擎執行層而非策略/指標層, 不牴觸「信號邏輯不用迴圈」的規範, 且策略層維持純向量化
-    因果性: 第 t 根輸出僅依賴 ≤ t 的收盤與 ATR, 沿用引擎「t 收盤決定, t+1 執行」慣例, 通過截斷法前視測試
+    出場後保持空手, 直到原始信號重新從 0 變為 1 才准再進場 (再進場鎖定, 避免剛停損下一根又買回)
+    路徑依賴 (依進場後的走勢), 無法乾淨向量化, 因此引擎執行層以有界 O(n) 迴圈實現;
+    這屬引擎執行層而非策略/指標層, 不牴觸信號邏輯不用迴圈的規範, 且策略層維持純向量化
+    因果性: 第 t 根輸出僅依賴 ≤ t 的收盤與 ATR, 沿用引擎 t 收盤決定, t+1 執行的慣例, 通過截斷法前視測試
     """
     target_position_values = target_position.to_numpy()
     close_price_values = close_price.to_numpy()
@@ -96,7 +96,7 @@ def apply_trailing_stop_exit(
             is_fresh_entry_edge = target_position_values[bar_index] == 1 and (
                 bar_index == 0 or target_position_values[bar_index - 1] == 0
             )
-            # ATR 前期為 NaN 時無法設止損線, 不進場; 與原引擎「ATR 未就緒時倉位為 0」一致
+            # ATR 前期為 NaN 時無法設止損線, 不進場; 與原引擎 ATR 未就緒時倉位為 0 一致
             if is_fresh_entry_edge and np.isfinite(
                 average_true_range_values[bar_index]
             ):
@@ -211,7 +211,7 @@ class BacktestEngine:
         strategy_net_return = strategy_gross_return - transaction_cost_percentage
         equity_curve = (1 + strategy_net_return).cumprod() * self.initial_capital
 
-        # 6. 逐筆交易明細, 供 ROADMAP 要求的「手動核對至少 10 筆交易」
+        # 6. 逐筆交易明細, 供 ROADMAP 要求的手動核對至少 10 筆交易
         trades = self._build_trade_summary(
             ohlcv_dataframe,
             executed_position,
@@ -265,7 +265,7 @@ class BacktestEngine:
         is_entry_day = (executed_position == 1) & (executed_position.shift(1) != 1)
         trade_identifier = is_entry_day.cumsum()
 
-        # 因信號已 shift(1) , 持倉在「進場信號當根 K 線的收盤」就已成交, 即在場首日的前一根收盤價
+        # 因信號已 shift(1) , 持倉在進場信號當根 K 線的收盤就已成交, 即在場首日的前一根收盤價
         # 記錄的進場價必須用這個成交價, (出場價 / 進場價 - 1) 才會與每日報酬累乘的結果一致, 供手動核對
         entry_execution_price = ohlcv_dataframe["close"].shift(1)
 

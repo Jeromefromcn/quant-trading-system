@@ -1,7 +1,7 @@
 """
-績效指標庫 — 把一條淨值曲線與逐筆交易換算成一組標準化的策略評估指標
+績效指標庫: 把一條淨值曲線與逐筆交易換算成一組標準化的策略評估指標
 與 01_learning/07_backtest_metrics.py 的算法一致, 集中在此供回測引擎與報告層引用
-所有指標都以「樣本外(out-of-sample) 數字才算數」為前提設計, 供 STRATEGY_LOG 記錄比較
+所有指標都以樣本外(out-of-sample) 數字才算數為前提設計, 供 STRATEGY_LOG 記錄比較
 """
 
 import numpy as np
@@ -14,7 +14,7 @@ TRADING_DAYS_PER_YEAR_STOCK = 252
 
 def maximum_drawdown(equity_curve: pd.Series) -> float:
     """
-    Max Drawdown(最大回撤) — 淨值相對歷史峰值最深跌了多少, 永遠 <= 0, 回答「我最慘會虧多少」
+    Max Drawdown(最大回撤): 淨值相對歷史峰值最深跌了多少, 永遠 <= 0, 回答我最慘會虧多少
     """
     running_peak_equity = equity_curve.cummax()
     drawdown_series = (equity_curve - running_peak_equity) / running_peak_equity
@@ -26,7 +26,7 @@ def annualized_sharpe_ratio(
     trading_days_per_year: int = TRADING_DAYS_PER_YEAR_CRYPTO,
 ) -> float:
     """
-    Sharpe Ratio(夏普比率) — 平均日報酬 / 日報酬標準差, 再用 sqrt(交易日數) 年化
+    Sharpe Ratio(夏普比率): 平均日報酬 / 日報酬標準差, 再用 sqrt(交易日數) 年化
     衡量每承擔一單位波動能換到多少報酬; 報酬全程為零波動時無定義, 回傳 0 表示無風險溢酬
     """
     return_standard_deviation = daily_return_percentage.std()
@@ -44,7 +44,7 @@ def compound_annual_growth_rate(
     trading_days_per_year: int = TRADING_DAYS_PER_YEAR_CRYPTO,
 ) -> float:
     """
-    CAGR(Compound Annual Growth Rate, 年化複合成長率) — 把總報酬換算成等效的年化報酬率
+    CAGR(Compound Annual Growth Rate, 年化複合成長率): 把總報酬換算成等效的年化報酬率
     """
     number_of_trading_days = len(equity_curve)
     if number_of_trading_days == 0:
@@ -56,7 +56,7 @@ def compound_annual_growth_rate(
 
 
 def win_rate(trade_return_percentage: pd.Series) -> float:
-    """勝率 — 賺錢的交易筆數佔總交易筆數的比例, 無交易時回傳 0"""
+    """勝率: 賺錢的交易筆數佔總交易筆數的比例, 無交易時回傳 0"""
     if len(trade_return_percentage) == 0:
         return 0.0
     return float((trade_return_percentage > 0).mean())
@@ -64,7 +64,7 @@ def win_rate(trade_return_percentage: pd.Series) -> float:
 
 def profit_factor(trade_return_percentage: pd.Series) -> float:
     """
-    Profit Factor(盈虧比) — 所有賺錢交易的總報酬 / 所有賠錢交易的總報酬絕對值, 大於 1 才代表整體賺錢
+    Profit Factor(盈虧比): 所有賺錢交易的總報酬 / 所有賠錢交易的總報酬絕對值, 大於 1 才代表整體賺錢
     沒有任何賠錢交易時分母為零, 回傳無限大表示尚無虧損可供衡量
     """
     winning_trades_total = trade_return_percentage[trade_return_percentage > 0].sum()
