@@ -1,5 +1,5 @@
 """
-apply — 向量化不夠時的退路
+apply: 向量化不夠時的退路
 原則: 能向量化就向量化, apply 是最後手段
 """
 
@@ -121,7 +121,7 @@ assert (
     price_dataframe["market_regime_apply_method"]
     == price_dataframe["market_regime_vectorized_method"]
 ).all()
-print("兩種方式結果一致 ✓ — 向量化版本用 np.select 更清晰且更快")
+print("兩種方式結果一致 ✓ : 向量化版本用 np.select 更清晰且更快")
 
 # 場景 2: 對每列做複雜聚合(axis=0)
 print("\n=== apply 對列做自定義聚合 ===")

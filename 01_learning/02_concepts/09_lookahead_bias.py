@@ -1,5 +1,5 @@
 """
-前視偏差(Lookahead Bias) 演示: 如果用「今天的信號」去交易「今天的報酬」,
+前視偏差(Lookahead Bias) 演示: 如果用今天的信號去交易今天的報酬,
 等於假裝自己在今天收盤前就已經知道今天的收盤價, 這在實盤是不可能做到的,
 但很多新手寫的回測程式碼會不小心犯這個錯誤, 導致回測績效被嚴重高估
 """
@@ -33,13 +33,13 @@ target_position = (
 ).astype(int)
 daily_return_percentage = daily_kline_dataframe["close"].pct_change()
 
-# 錯誤版本(有前視偏差): 直接用「今天收盤後才能確定」的信號去乘「今天」的報酬,
+# 錯誤版本(有前視偏差): 直接用今天收盤後才能確定的信號去乘今天的報酬,
 # 等於用收盤價算出信號, 又假裝能用同一天的收盤價成交, 現實中根本來不及反應
 strategy_return_with_lookahead_bias = (
     target_position * daily_return_percentage
 ).fillna(0)
 
-# 正確版本: 今天收盤後決定的信號, 只能拿去交易「明天」的報酬, shift(1) 把信號往後推一天執行
+# 正確版本: 今天收盤後決定的信號, 只能拿去交易明天的報酬, shift(1) 把信號往後推一天執行
 executed_position_without_lookahead = target_position.shift(1)
 strategy_return_without_lookahead_bias = (
     executed_position_without_lookahead * daily_return_percentage
@@ -60,7 +60,7 @@ sharpe_ratio_without_lookahead_bias = (
     * np.sqrt(365)
 )
 
-# 把兩條淨值曲線疊在一起, 直接看出「犯了前視偏差」的版本看起來有多誘人, 但其實是假象
+# 把兩條淨值曲線疊在一起, 直接看出犯了前視偏差的版本看起來有多誘人, 但其實是假象
 figure, equity_axes = plt.subplots(figsize=(12, 6))
 equity_axes.plot(
     daily_kline_dataframe["open_time"],
@@ -91,4 +91,4 @@ print(
     f"無前視偏差版本最終淨值倍數: {equity_curve_without_lookahead_bias.iloc[-1]:.2f}, "
     f"Sharpe={sharpe_ratio_without_lookahead_bias:.2f}"
 )
-print("兩者的差距, 就是「假裝知道未來」憑空多賺到的部分, 實盤永遠拿不到這個差距")
+print("兩者的差距, 就是假裝知道未來憑空多賺到的部分, 實盤永遠拿不到這個差距")

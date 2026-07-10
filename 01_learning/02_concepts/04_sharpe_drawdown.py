@@ -1,6 +1,6 @@
 """
-Sharpe Ratio(夏普比率) 與 Max Drawdown(最大回撤) — 評估一個策略好壞最核心的兩個指標
-Sharpe 衡量「每承擔一單位風險, 能換到多少報酬」, Max Drawdown 衡量「資金最慘會縮水多少」
+Sharpe Ratio(夏普比率) 與 Max Drawdown(最大回撤): 評估一個策略好壞最核心的兩個指標
+Sharpe 衡量每承擔一單位風險, 能換到多少報酬, Max Drawdown 衡量資金最慘會縮水多少
 這裡先用 BTC/USDT 買入並持有(Buy and Hold) 當範例策略, 之後章節再套到真正的交易策略上
 """
 
@@ -26,14 +26,14 @@ daily_kline_dataframe = pd.read_csv(local_data_file_path, parse_dates=["open_tim
 daily_return_percentage = daily_kline_dataframe["close"].pct_change().dropna()
 
 # Sharpe Ratio = 平均報酬 / 報酬的標準差(風險) , 再用 sqrt(365) 年化(加密貨幣全年無休交易)
-# 直覺: 報酬一樣高的兩個策略, 波動越小(分母越小) Sharpe 越高, 代表賺得更「穩」
+# 直覺: 報酬一樣高的兩個策略, 波動越小(分母越小) Sharpe 越高, 代表賺得更穩
 annualized_sharpe_ratio = (
     daily_return_percentage.mean() / daily_return_percentage.std() * np.sqrt(365)
 )
 
 # 把每日報酬率連乘還原成淨值曲線, 起始淨值設為 1, 方便看整體成長倍數
 cumulative_equity_curve = (1 + daily_return_percentage).cumprod()
-# 歷史至今的最高淨值(峰值) , 之後每天用現在淨值跟這個峰值比較, 才能算出「從高點跌了多少」
+# 歷史至今的最高淨值(峰值) , 之後每天用現在淨值跟這個峰值比較, 才能算出從高點跌了多少
 running_peak_equity = cumulative_equity_curve.cummax()
 # Drawdown(回撤) = 現在淨值相對歷史峰值的跌幅, 永遠 <= 0, 數字越負代表虧得越深
 drawdown_series = (cumulative_equity_curve - running_peak_equity) / running_peak_equity
@@ -68,5 +68,5 @@ plt.show()
 print(f"年化 Sharpe Ratio: {annualized_sharpe_ratio:.2f}")
 print(f"最大回撤(Max Drawdown): {maximum_drawdown:.1%}")
 print(
-    "Sharpe 只看平均報酬與波動, 不會告訴你曾經慘賠多少; 最大回撤才回答「我撐得住嗎」這個問題"
+    "Sharpe 只看平均報酬與波動, 不會告訴你曾經慘賠多少; 最大回撤才回答我撐得住嗎這個問題"
 )

@@ -1,5 +1,5 @@
 """
-過擬合(Overfitting) 演示: 在同一份數據上測試大量參數組合, 一定能找到「看起來很棒」的組合,
+過擬合(Overfitting) 演示: 在同一份數據上測試大量參數組合, 一定能找到看起來很棒的組合,
 但那往往只是運氣好(noise) , 不是策略真的有效. 這是回測最容易踩的陷阱之一
 """
 
@@ -52,7 +52,7 @@ def calculate_annualized_sharpe_ratio(fast_window, slow_window, price_return_ser
     )
 
 
-# 窮舉一大批快慢線參數組合, 這就是研究者最常做但也最危險的事: 「試到一個 Sharpe 最高的就拿來用」
+# 窮舉一大批快慢線參數組合, 這就是研究者最常做但也最危險的事: 試到一個 Sharpe 最高的就拿來用
 fast_window_options = [5, 8, 10, 12, 15, 18, 20, 25]
 slow_window_options = [20, 26, 30, 40, 50, 60, 80, 100]
 grid_search_results = [
@@ -94,7 +94,7 @@ os.makedirs(images_output_directory_path, exist_ok=True)
 figure.savefig(os.path.join(images_output_directory_path, "08_overfitting.png"))
 plt.show()
 
-# 把全樣本選出來的「最佳」參數, 拆開放到前 70% 和後 30% 分別重新計算 Sharpe,
+# 把全樣本選出來的最佳參數, 拆開放到前 70% 和後 30% 分別重新計算 Sharpe,
 # 如果這組參數真的有效, 前後段表現應該接近; 如果差很多, 就是過擬合到了特定那段歷史的噪音
 split_index_position = int(len(daily_return_percentage) * 0.7)
 first_part_sharpe = calculate_annualized_sharpe_ratio(
@@ -117,5 +117,5 @@ print(
 print(f"同一組參數在前 70% 資料的 Sharpe: {first_part_sharpe:.2f}")
 print(f"同一組參數在後 30% 資料的 Sharpe: {second_part_sharpe:.2f}")
 print(
-    "如果兩段差距很大, 代表「全樣本最佳」只是過擬合到特定歷史路徑的噪音, 而不是真正穩定的優勢"
+    "如果兩段差距很大, 代表全樣本最佳只是過擬合到特定歷史路徑的噪音, 而不是真正穩定的優勢"
 )

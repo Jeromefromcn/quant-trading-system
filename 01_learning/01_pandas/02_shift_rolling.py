@@ -1,5 +1,5 @@
 """
-位移與滾動操作 — 量化最常用的一組方法
+位移與滾動操作: 量化最常用的一組方法
 shift / rolling / expanding / ewm / diff
 """
 

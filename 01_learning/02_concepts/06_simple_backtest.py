@@ -30,7 +30,7 @@ exponential_moving_average_slow = (
 is_fast_above_slow = exponential_moving_average_fast > exponential_moving_average_slow
 target_position = is_fast_above_slow.astype(int)
 
-# 重點: 用「今天收盤後決定的信號」去交易「明天的報酬」, 而不是用今天信號交易今天的報酬,
+# 重點: 用今天收盤後決定的信號去交易明天的報酬, 而不是用今天信號交易今天的報酬,
 # 因為今天收盤前你還不知道今天的收盤價, 不能假裝自己能在當天用當天的收盤價成交(前視偏差)
 executed_position = target_position.shift(1)
 daily_return_percentage = daily_kline_dataframe["close"].pct_change()

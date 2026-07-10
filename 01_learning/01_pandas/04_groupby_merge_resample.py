@@ -1,6 +1,6 @@
 """
 分組, 合併, 重採樣
-groupby / concat / merge / resample — 多數據源整合的核心工具
+groupby / concat / merge / resample: 多數據源整合的核心工具
 """
 
 import pandas as pd
@@ -83,7 +83,7 @@ print(merged[["close", "fear_greed_index"]].head(10))
 print(f"\n沒有情緒數據的行(NaN) : {merged['fear_greed_index'].isna().sum()} 天")
 
 # ── resample: 時間序列重採樣 ─────────────────────────────────────────────────
-# 語義: 改變時間頻率, 日線 → 周線/月線; 前提是 index 必須是 DatetimeIndex
+# 語義: 改變時間頻率 (日線變周線或月線); 前提是 index 必須是 DatetimeIndex
 
 print("\n=== resample 日線轉周線 ===")
 weekly_ohlc = (

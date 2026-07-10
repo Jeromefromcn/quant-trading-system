@@ -1,5 +1,5 @@
 """
-ATR(Average True Range, 平均真實波幅) — 衡量市場每天實際波動了多少
+ATR(Average True Range, 平均真實波幅): 衡量市場每天實際波動了多少
 是設定止損距離最常用的波動率指標, 比固定百分比止損更能適應不同幣種與不同行情
 """
 
@@ -34,7 +34,7 @@ true_range = pd.concat(
 # 比簡單算術平均更貼近業界標準算法(J. Welles Wilder 在 1978 年提出 ATR 時的原始定義)
 average_true_range_14_day = true_range.ewm(alpha=1 / 14, adjust=False).mean()
 
-# 上圖看收盤價走勢, 下圖看 ATR 走勢, 方便對照「行情劇烈波動的時候, ATR 是否真的同步升高」
+# 上圖看收盤價走勢, 下圖看 ATR 走勢, 方便對照行情劇烈波動的時候, ATR 是否真的同步升高
 figure, (price_axes, atr_axes) = plt.subplots(2, 1, figsize=(12, 6), sharex=True)
 price_axes.plot(
     daily_kline_dataframe["open_time"], daily_kline_dataframe["close"], color="black"

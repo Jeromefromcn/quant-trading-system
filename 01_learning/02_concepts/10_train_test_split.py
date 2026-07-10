@@ -1,6 +1,6 @@
 """
 樣本內外劃分(Train/Test Split) 與 Walk-Forward 驗證: 正式的研究方法論,
-之後 Phase 2 所有實驗都要遵守 — 樣本外的數據絕對不能拿來調參, 只能用一次做最終驗證
+之後 Phase 2 所有實驗都要遵守: 樣本外的數據絕對不能拿來調參, 只能用一次做最終驗證
 時間序列資料不能隨機打亂分割, 必須按時間順序切, 否則等於讓模型看到未來(前視偏差的另一種形式)
 """
 
@@ -56,7 +56,7 @@ def calculate_annualized_sharpe_ratio(fast_window, slow_window, price_return_ser
 
 
 def find_best_combination_on_training_data(training_return_series):
-    """只用訓練期間的數據選參數, 模擬研究時「只能看過去, 不能偷看未來」的真實限制"""
+    """只用訓練期間的數據選參數, 模擬研究時只能看過去, 不能偷看未來的真實限制"""
     all_results = [
         calculate_annualized_sharpe_ratio(
             fast_window, slow_window, training_return_series
@@ -68,7 +68,7 @@ def find_best_combination_on_training_data(training_return_series):
     return max(valid_results, key=lambda result: result[0])
 
 
-# 第一部分: 標準 70/30 切分 — 前 70% 是樣本內(訓練/調參用) , 後 30% 是樣本外(只驗證一次, 不能回頭調參)
+# 第一部分: 標準 70/30 切分: 前 70% 是樣本內(訓練/調參用) , 後 30% 是樣本外(只驗證一次, 不能回頭調參)
 split_index_position = int(len(daily_return_percentage) * 0.7)
 in_sample_returns = daily_return_percentage.iloc[:split_index_position]
 out_of_sample_returns = daily_return_percentage.iloc[split_index_position:]
@@ -85,7 +85,7 @@ print(
 )
 print(f"同一組參數在樣本外(後 30%) 的 Sharpe={out_of_sample_sharpe:.2f}(只驗證這一次)")
 
-# 第二部分: Walk-Forward 驗證 — 把資料切成 4 段, 每一段測試前都只用「這段之前」的數據重新選參數,
+# 第二部分: Walk-Forward 驗證: 把資料切成 4 段, 每一段測試前都只用這段之前的數據重新選參數,
 # 模擬真實研究流程隨著時間推進不斷往前滾動, 而不是一次性切一刀就結束
 fold_boundary_positions = np.linspace(0, len(daily_return_percentage), 5, dtype=int)
 walk_forward_fold_results = []

@@ -1,6 +1,6 @@
 """
 篩選與布林索引
-用條件表達式篩選行 — pandas 的 if-else 替代方案
+用條件表達式篩選行: pandas 的 if-else 替代方案
 """
 
 import pandas as pd
@@ -62,10 +62,10 @@ print(high_price_close_volume)
 price_dataframe["signal"] = 0
 price_dataframe.loc[
     price_dataframe["close"] > price_dataframe["close"].shift(1), "signal"
-] = 1  # 今日 > 昨日 → 上漲
+] = 1  # 上漲: 今日 > 昨日
 price_dataframe.loc[
     price_dataframe["close"] < price_dataframe["close"].shift(1), "signal"
-] = -1  # 今日 < 昨日 → 下跌
+] = -1  # 下跌: 今日 < 昨日
 print(f"\n漲跌信號:\n{price_dataframe['signal']}")
 
 # ── .iloc 位置索引 ───────────────────────────────────────────────────────────

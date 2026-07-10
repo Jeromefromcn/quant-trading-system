@@ -61,7 +61,7 @@ ohlcv_dataframe.to_csv(
 
 # 用兩個子圖呈現一根 K 線真正在說的兩件事: 市場認可的價格, 和有多少人在交易
 figure, (price_axes, volume_axes) = plt.subplots(2, 1, figsize=(12, 6), sharex=True)
-# 收盤價走勢線: 代表每天市場最終認可的價格, 是最常被引用的「那個價格」
+# 收盤價走勢線: 代表每天市場最終認可的價格, 是最常被引用的那個價格
 price_axes.plot(
     ohlcv_dataframe["open_time"], ohlcv_dataframe["close"], color="steelblue"
 )

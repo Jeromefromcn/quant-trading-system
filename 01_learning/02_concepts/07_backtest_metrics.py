@@ -50,7 +50,7 @@ trade_summary_dataframe["trade_return_percentage"] = (
 
 # 總報酬: 從第一天到最後一天淨值漲了多少
 total_return_percentage = strategy_equity_curve.iloc[-1] - 1
-# CAGR(Compound Annual Growth Rate, 年化複合成長率) : 把總報酬換算成「如果用這個速度跑滿一年」的等效年化報酬
+# CAGR(Compound Annual Growth Rate, 年化複合成長率) : 把總報酬換算成如果用這個速度跑滿一年的等效年化報酬
 number_of_trading_days = len(strategy_daily_return_percentage)
 annualized_growth_rate = (
     strategy_equity_curve.iloc[-1] ** (365 / number_of_trading_days) - 1

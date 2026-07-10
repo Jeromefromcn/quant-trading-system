@@ -1,5 +1,5 @@
 """
-固定風險倉位法(Fixed Risk Position Sizing) — 决定「這一筆到底該買多少」
+固定風險倉位法(Fixed Risk Position Sizing): 决定這一筆到底該買多少
 核心邏輯: 不管波動大小, 每筆交易萬一打到止損, 虧損金額永遠固定佔賬戶的一個百分比
 止損距離用 ATR(Average True Range, 平均真實波幅) 的倍數設定, 波動大時自動縮小倉位
 """
@@ -21,7 +21,7 @@ if not os.path.exists(local_data_file_path):
     )
 daily_kline_dataframe = pd.read_csv(local_data_file_path, parse_dates=["open_time"])
 
-# 重新計算 14 日 ATR(做法與 03_atr.py 一致) , 倉位計算需要知道「現在市場一天大概會動多少」
+# 重新計算 14 日 ATR(做法與 03_atr.py 一致) , 倉位計算需要知道現在市場一天大概會動多少
 previous_day_close = daily_kline_dataframe["close"].shift(1)
 true_range = pd.concat(
     [
@@ -38,7 +38,7 @@ account_size_in_dollars = 10_000
 risk_per_trade_percentage = 0.01
 risk_amount_per_trade_in_dollars = account_size_in_dollars * risk_per_trade_percentage
 
-# 止損距離設為 2 倍 ATR, 而不是固定的 5%: 固定百分比沒考慮到「現在到底波動大不大」,
+# 止損距離設為 2 倍 ATR, 而不是固定的 5%: 固定百分比沒考慮到現在到底波動大不大,
 # 用 ATR 倍數可以讓止損距離隨市場真實波動自動放大或縮小, 不會在低波動時止損設太鬆, 高波動時設太緊
 stop_loss_distance_in_dollars = 2 * average_true_range_14_day
 # 倉位大小(幣的數量) = 願意虧的金額 / 每單位資產一旦打到止損會虧多少
@@ -47,7 +47,7 @@ position_size_in_units = (
 )
 position_value_in_dollars = position_size_in_units * daily_kline_dataframe["close"]
 
-# 上圖看 ATR(波動程度) , 下圖看對應算出來的倉位大小, 驗證「波動越大, 倉位應該越小」這個關係
+# 上圖看 ATR(波動程度) , 下圖看對應算出來的倉位大小, 驗證波動越大, 倉位應該越小這個關係
 figure, (atr_axes, position_size_axes) = plt.subplots(
     2, 1, figsize=(12, 6), sharex=True
 )

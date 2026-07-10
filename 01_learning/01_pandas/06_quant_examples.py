@@ -236,10 +236,10 @@ print(
 price_dataframe["relative_strength_index_signal"] = 0
 price_dataframe.loc[
     price_dataframe["relative_strength_index"] < 30, "relative_strength_index_signal"
-] = 1  # 超賣 → 做多
+] = 1  # 做多: 超賣
 price_dataframe.loc[
     price_dataframe["relative_strength_index"] > 70, "relative_strength_index_signal"
-] = -1  # 超買 → 做空
+] = -1  # 做空: 超買
 
 # ── 布林帶(Bollinger Bands) 突破信號 ────────────────────────────────────────────────────────────
 
