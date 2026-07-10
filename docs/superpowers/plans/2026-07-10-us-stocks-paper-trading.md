@@ -35,13 +35,69 @@
 - Arrow (`→`) used to show a pipeline/sequence (`A → B → C`) → rephrase in prose (e.g. "A, 接著 B, 最後 C" or "資料流程依序是 A, B, C") — do not introduce `->` or other ASCII arrows as a substitute, that is not in the whitelist either
 - Never touch anything else: no rewording beyond what's needed to remove the disallowed character, no logic changes, no reordering of code
 
-**Sub-tasks (dispatch and review each independently, same implementer/reviewer loop as Tasks 1-9):**
+Dispatch and review each of the following five sub-tasks independently, same implementer/reviewer loop as Tasks 1-9. Each applies the replacement rules above to its listed files only, then runs its listed verification command, then commits.
 
-- **Task 0a:** `01_learning/` — 14 files: `01_pandas/{02_shift_rolling,03_boolean_indexing,04_groupby_merge_resample,05_apply,06_quant_examples}.py`, `02_concepts/{01_ohlcv_basics,03_atr,04_sharpe_drawdown,05_position_sizing,06_simple_backtest,07_backtest_metrics,08_overfitting,09_lookahead_bias,10_train_test_split}.py`. No test suite covers this directory (per CLAUDE.md's architecture table, "run and study, not imported") — verification is `python3 <file>` still runs without a `SyntaxError` for each touched file (these are standalone scripts; a full behavioral run is not required, just confirm the file still parses and imports cleanly).
-- **Task 0b:** `02_data/` — 3 files: `fetchers/binance_fetcher.py`, `fetchers/alpaca_fetcher.py`, `validate_against_independent_source.py`. Verify with `pytest tests/test_binance_fetcher_parsing.py -v`.
-- **Task 0c:** `03_research/` — 20 files: `03_backtest/{report,metrics,engine}.py`, `02_strategies/{trend_following,base}.py`, `01_indicators/{volatility,trend,momentum}.py`, `04_experiments/{new_experiment,run_experiment}.py`, `04_experiments/exp_002_ema_adx/factor_regression.py`, and the 9 frozen config files under the hard constraint above: `04_experiments/_template/config.py`, `04_experiments/exp_001_ema_baseline/config.py`, `04_experiments/exp_002_ema_adx/config.py`, `04_experiments/exp_003_ema_slow/config.py`, `04_experiments/exp_004_trailing_stop/config.py`, `04_experiments/exp_005_tight_trailing/config.py`, `04_experiments/exp_006_eth/config.py`, `04_experiments/exp_007_spy/config.py`, `04_experiments/exp_008_qqq/config.py`. Verify with `pytest tests/test_backtest.py tests/test_indicators.py tests/test_trailing_stop.py tests/test_engine_invariants.py tests/test_risk.py -v`.
-- **Task 0d:** `04_paper_trading/` — 9 files: `events.py`, `daily_risk_state.py`, `binance_testnet_client.py`, `telegram_alerts.py`, `run_once.py`, `agents/signal_agent.py`, `agents/execution_agent.py`, `agents/risk_agent.py`, `agents/data_agent.py`. This is the live production crypto paper-trading pipeline (real cron jobs running against real Binance Testnet) — verify with the full existing paper-trading test subset: `pytest tests/test_paper_trading_*.py tests/test_daily_risk_state.py tests/test_telegram_alerts.py tests/test_binance_testnet_client_rounding.py -v`.
-- **Task 0e:** `tests/` — 16 files: `test_telegram_alerts.py`, `test_paper_trading_data_agent.py`, `test_daily_risk_state.py`, `test_binance_testnet_client_rounding.py`, `test_paper_trading_run_once.py`, `test_engine_invariants.py`, `test_paper_trading_events.py`, `test_indicators.py`, `test_trailing_stop.py`, `test_paper_trading_signal_agent.py`, `test_paper_trading_risk_agent.py`, `test_backtest.py`, `test_paper_trading_execution_agent.py`, `conftest.py`, `test_binance_fetcher_parsing.py`, `test_risk.py`. These occurrences are all in docstrings/comments, not in string literals compared by assertions (confirmed during pre-flight, see above) — verify with the full suite: `pytest tests/ -v`.
+### Task 0a: punctuation cleanup, `01_learning/`
+
+**Files:** `01_learning/01_pandas/02_shift_rolling.py`, `01_learning/01_pandas/03_boolean_indexing.py`, `01_learning/01_pandas/04_groupby_merge_resample.py`, `01_learning/01_pandas/05_apply.py`, `01_learning/01_pandas/06_quant_examples.py`, `01_learning/02_concepts/01_ohlcv_basics.py`, `01_learning/02_concepts/03_atr.py`, `01_learning/02_concepts/04_sharpe_drawdown.py`, `01_learning/02_concepts/05_position_sizing.py`, `01_learning/02_concepts/06_simple_backtest.py`, `01_learning/02_concepts/07_backtest_metrics.py`, `01_learning/02_concepts/08_overfitting.py`, `01_learning/02_concepts/09_lookahead_bias.py`, `01_learning/02_concepts/10_train_test_split.py` (14 files).
+
+**Verification:** no test suite covers this directory (per CLAUDE.md's architecture table, these scripts are "run and study, not imported"). For each touched file, run `python3 -c "import ast; ast.parse(open('PATH', encoding='utf-8').read())"` to confirm it still parses with no `SyntaxError`. That is sufficient; do not attempt a full behavioral run of scripts that expect interactive/plotting context.
+
+- [ ] Apply the replacement rules to every `—`, `「`, `」`, `→` occurrence in these 14 files. Nothing else changes: no rewording beyond removing the disallowed character, no logic changes.
+- [ ] Run the `ast.parse` check above on all 14 files, confirm no errors.
+- [ ] Run `grep -rlE "—|「|」|→" 01_learning/` and confirm no output.
+- [ ] Commit: `git add 01_learning/ && git commit -m "docs: normalize punctuation in 01_learning per CLAUDE.md"`
+
+### Task 0b: punctuation cleanup, `02_data/`
+
+**Files:** `02_data/fetchers/binance_fetcher.py`, `02_data/fetchers/alpaca_fetcher.py`, `02_data/validate_against_independent_source.py` (3 files).
+
+**Verification:** `pytest tests/test_binance_fetcher_parsing.py -v`
+
+- [ ] Apply the replacement rules to every `—`, `「`, `」`, `→` occurrence in these 3 files.
+- [ ] Run `pytest tests/test_binance_fetcher_parsing.py -v`, confirm all pass.
+- [ ] Run `grep -rlE "—|「|」|→" 02_data/` and confirm no output.
+- [ ] Commit: `git add 02_data/ && git commit -m "docs: normalize punctuation in 02_data per CLAUDE.md"`
+
+### Task 0c: punctuation cleanup, `03_research/`
+
+**Files:** `03_research/03_backtest/report.py`, `03_research/03_backtest/metrics.py`, `03_research/03_backtest/engine.py`, `03_research/02_strategies/trend_following.py`, `03_research/02_strategies/base.py`, `03_research/01_indicators/volatility.py`, `03_research/01_indicators/trend.py`, `03_research/01_indicators/momentum.py`, `03_research/04_experiments/new_experiment.py`, `03_research/04_experiments/run_experiment.py`, `03_research/04_experiments/exp_002_ema_adx/factor_regression.py` (11 files, unrestricted), plus these 9 frozen experiment config files under a **hard constraint**: `03_research/04_experiments/_template/config.py`, `exp_001_ema_baseline/config.py`, `exp_002_ema_adx/config.py`, `exp_003_ema_slow/config.py`, `exp_004_trailing_stop/config.py`, `exp_005_tight_trailing/config.py`, `exp_006_eth/config.py`, `exp_007_spy/config.py`, `exp_008_qqq/config.py`.
+
+**Hard constraint on the 9 config.py files:** these are frozen historical experiment records. `exp_002_ema_adx/config.py` specifically is imported live by `04_paper_trading/agents/signal_agent.py` for real trading decisions. Only comment/docstring text may change. Every `key: value` line inside `ENGINE_PARAMS`, `STRATEGY_PARAMS`, or any other parameter dict must remain byte-for-byte identical: no reformatting, no reordering, no whitespace changes inside the dict literals. Before committing, run `git diff --unified=0 -- '**/config.py'` and manually confirm every changed line is a comment/docstring line, not a dict key or value.
+
+**Verification:** `pytest tests/test_backtest.py tests/test_indicators.py tests/test_trailing_stop.py tests/test_engine_invariants.py tests/test_risk.py -v`
+
+- [ ] Apply the replacement rules to every `—`, `「`, `」`, `→` occurrence in the 11 unrestricted files, and to comment/docstring-only occurrences in the 9 config.py files (leave all parameter dict lines untouched).
+- [ ] Run `git diff --unified=0 -- '03_research/04_experiments/*/config.py'` and confirm every changed line is a `#`-prefixed comment or inside a `"""..."""` docstring, never a dict key/value line.
+- [ ] Run `pytest tests/test_backtest.py tests/test_indicators.py tests/test_trailing_stop.py tests/test_engine_invariants.py tests/test_risk.py -v`, confirm all pass.
+- [ ] Run `grep -rlE "—|「|」|→" 03_research/` and confirm no output.
+- [ ] Commit: `git add 03_research/ && git commit -m "docs: normalize punctuation in 03_research per CLAUDE.md"`
+
+### Task 0d: punctuation cleanup, `04_paper_trading/` (live production crypto pipeline)
+
+**Files:** `04_paper_trading/events.py`, `04_paper_trading/daily_risk_state.py`, `04_paper_trading/binance_testnet_client.py`, `04_paper_trading/telegram_alerts.py`, `04_paper_trading/run_once.py`, `04_paper_trading/agents/signal_agent.py`, `04_paper_trading/agents/execution_agent.py`, `04_paper_trading/agents/risk_agent.py`, `04_paper_trading/agents/data_agent.py` (9 files).
+
+This is the live production crypto paper-trading pipeline: real crontab entries run these files against a real Binance Testnet account every 4 hours. Comment/docstring-only changes, but treat it carefully: do not touch any string literal that is actually sent somewhere (a Telegram alert message, an exception message, a log field name) without confirming no test asserts on its exact text. Pre-flight check already confirmed none of the flagged occurrences in this directory sit inside such literals (they are all in module/function docstrings and inline comments), but re-verify this yourself by inspecting each occurrence's surrounding code before changing it, and if you find one that's actually a runtime-visible string, stop and report it rather than changing it.
+
+**Verification:** `pytest tests/test_paper_trading_events.py tests/test_paper_trading_risk_agent.py tests/test_paper_trading_run_once.py tests/test_paper_trading_signal_agent.py tests/test_paper_trading_execution_agent.py tests/test_paper_trading_data_agent.py tests/test_daily_risk_state.py tests/test_telegram_alerts.py tests/test_binance_testnet_client_rounding.py -v`
+
+- [ ] Apply the replacement rules to every `—`, `「`, `」`, `→` occurrence in these 9 files, after confirming each is a docstring/comment, not a runtime-visible string literal.
+- [ ] Run the verification command above, confirm all pass.
+- [ ] Run `grep -rlE "—|「|」|→" 04_paper_trading/*.py 04_paper_trading/agents/*.py` and confirm no output.
+- [ ] Commit: `git add 04_paper_trading/*.py 04_paper_trading/agents/*.py && git commit -m "docs: normalize punctuation in 04_paper_trading crypto pipeline per CLAUDE.md"`
+
+### Task 0e: punctuation cleanup, `tests/`
+
+**Files:** `tests/test_telegram_alerts.py`, `tests/test_paper_trading_data_agent.py`, `tests/test_daily_risk_state.py`, `tests/test_binance_testnet_client_rounding.py`, `tests/test_paper_trading_run_once.py`, `tests/test_engine_invariants.py`, `tests/test_paper_trading_events.py`, `tests/test_indicators.py`, `tests/test_trailing_stop.py`, `tests/test_paper_trading_signal_agent.py`, `tests/test_paper_trading_risk_agent.py`, `tests/test_backtest.py`, `tests/test_paper_trading_execution_agent.py`, `tests/conftest.py`, `tests/test_binance_fetcher_parsing.py`, `tests/test_risk.py` (16 files).
+
+Pre-flight already confirmed every occurrence in these files sits in a docstring or comment, not inside a string literal compared by an `assert` or a `pytest.raises(..., match=...)` regex — grep for `match=` and for `assert.*[—「」→]` across `tests/*.py` both returned zero hits. Still, before changing each occurrence, glance at its line to confirm it is not inside a string literal that a test compares against.
+
+**Verification:** `pytest tests/ -v` (full suite, since this task touches test files across the whole repo)
+
+- [ ] Apply the replacement rules to every `—`, `「`, `」`, `→` occurrence in these 16 files.
+- [ ] Run `pytest tests/ -v`, confirm all pass with the same count as the pre-task baseline (156 as of this plan's authoring, may differ if Tasks 0a-0d already landed and changed the count).
+- [ ] Run `grep -rlE "—|「|」|→" tests/` and confirm no output.
+- [ ] Commit: `git add tests/ && git commit -m "docs: normalize punctuation in tests per CLAUDE.md"`
 
 **After all five sub-tasks are reviewed clean:** run `pytest tests/ -v` once more (full suite) and `grep -rlE "—|「|」|→" --include="*.py" .` from the repo root to confirm zero remaining matches before proceeding to Task 1.
 
