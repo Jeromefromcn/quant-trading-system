@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a second, independent Phase 3 paper-trading pipeline for SPY + QQQ against Alpaca Paper Trading, reusing the frozen `exp_002` strategy and the existing crypto pipeline's shared agents, executing once per US trading day via limit-on-open / market-on-open orders.
+**Goal:** Add a second, independent Phase 3 paper-trading pipeline for VOO + QQQ against Alpaca Paper Trading, reusing the frozen `exp_002` strategy and the existing crypto pipeline's shared agents, executing once per US trading day via limit-on-open / market-on-open orders.
 
 **Architecture:** Mirrors the existing `04_paper_trading` crypto pipeline (`data → signal → risk → execution`, one `run_once`, one `scheduler`, one `monitor`) file-for-file, but with an Alpaca-specific client and agents, its own log/state files, and a single daily run (no polling) since orders are queued with the exchange for the next opening auction instead of executed immediately.
 
@@ -83,15 +83,15 @@ def test_order_event_defaults_limit_price_to_none():
 
 
 def test_order_event_holds_limit_price_when_provided():
-    order_event = OrderEvent(symbol="SPY", side="BUY", quantity=10, limit_price=550.25)
+    order_event = OrderEvent(symbol="VOO", side="BUY", quantity=10, limit_price=550.25)
     assert order_event.limit_price == 550.25
 
 
 def test_submitted_event_holds_all_fields():
     submitted_event = SubmittedEvent(
-        symbol="SPY", side="BUY", quantity=10.0, order_id="abc123", limit_price=550.25
+        symbol="VOO", side="BUY", quantity=10.0, order_id="abc123", limit_price=550.25
     )
-    assert submitted_event.symbol == "SPY"
+    assert submitted_event.symbol == "VOO"
     assert submitted_event.side == "BUY"
     assert submitted_event.quantity == 10.0
     assert submitted_event.order_id == "abc123"
@@ -99,7 +99,7 @@ def test_submitted_event_holds_all_fields():
 
 
 def test_submitted_event_defaults_limit_price_to_none():
-    submitted_event = SubmittedEvent(symbol="SPY", side="SELL", quantity=10.0, order_id="abc123")
+    submitted_event = SubmittedEvent(symbol="VOO", side="SELL", quantity=10.0, order_id="abc123")
     assert submitted_event.limit_price is None
 ```
 
@@ -160,7 +160,7 @@ git commit -m "feat: add OrderEvent.limit_price and SubmittedEvent for US-stocks
 
 ---
 
-### Task 2: `risk_agent.py` — register SPY/QQQ and populate `limit_price` for stock buys
+### Task 2: `risk_agent.py` — register VOO/QQQ and populate `limit_price` for stock buys
 
 **Files:**
 - Modify: `04_paper_trading/agents/risk_agent.py`
@@ -168,7 +168,7 @@ git commit -m "feat: add OrderEvent.limit_price and SubmittedEvent for US-stocks
 
 **Interfaces:**
 - Consumes: `events.OrderEvent(..., limit_price=...)` from Task 1.
-- Produces: `risk_agent.SYMBOL_MARKET_TYPES` now includes `"SPY": "stocks", "QQQ": "stocks"`. `risk_agent.review_portfolio(...)` (signature unchanged) now sets `limit_price` on approved stock buy `OrderEvent`s — later tasks (`run_once_stocks.py`) rely on this to know the LOO price without recomputing it.
+- Produces: `risk_agent.SYMBOL_MARKET_TYPES` now includes `"VOO": "stocks", "QQQ": "stocks"`. `risk_agent.review_portfolio(...)` (signature unchanged) now sets `limit_price` on approved stock buy `OrderEvent`s — later tasks (`run_once_stocks.py`) rely on this to know the LOO price without recomputing it.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -176,23 +176,23 @@ Add to `tests/test_paper_trading_risk_agent.py` (after the existing `test_review
 
 ```python
 def test_symbol_market_types_includes_stock_symbols():
-    assert risk_agent.SYMBOL_MARKET_TYPES["SPY"] == "stocks"
+    assert risk_agent.SYMBOL_MARKET_TYPES["VOO"] == "stocks"
     assert risk_agent.SYMBOL_MARKET_TYPES["QQQ"] == "stocks"
 
 
 def test_review_portfolio_sets_limit_price_on_stock_buy_order():
     signal_events = {
-        "SPY": _make_signal_event("SPY", target_position=1, close_price=550.0, average_true_range=5.0)
+        "VOO": _make_signal_event("VOO", target_position=1, close_price=550.0, average_true_range=5.0)
     }
-    close_price_histories = {"SPY": _make_close_price_series([540.0 + index for index in range(30)])}
+    close_price_histories = {"VOO": _make_close_price_series([540.0 + index for index in range(30)])}
 
     decisions = risk_agent.review_portfolio(
         signal_events, {}, {}, 10_000.0, 10_000.0, close_price_histories, ENGINE_PARAMETERS, RISK_LIMITS
     )
 
-    assert isinstance(decisions["SPY"], OrderEvent)
-    assert decisions["SPY"].quantity == pytest.approx(10.0)  # 0.01*550/(2*5) = 0.55 佔比, 5500/550 = 10 股
-    assert decisions["SPY"].limit_price == 550.0
+    assert isinstance(decisions["VOO"], OrderEvent)
+    assert decisions["VOO"].quantity == pytest.approx(10.0)  # 0.01*550/(2*5) = 0.55 佔比, 5500/550 = 10 股
+    assert decisions["VOO"].limit_price == 550.0
 
 
 def test_review_portfolio_leaves_limit_price_none_on_crypto_buy_order():
@@ -216,7 +216,7 @@ def test_review_portfolio_leaves_limit_price_none_on_crypto_buy_order():
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `pytest tests/test_paper_trading_risk_agent.py -v -k "symbol_market_types_includes_stock or limit_price"`
-Expected: FAIL — `KeyError: 'SPY'` on the first test (not in `SYMBOL_MARKET_TYPES`); `AttributeError` or assertion failure on the other two (`limit_price` doesn't exist yet on results, since `OrderEvent` didn't have it before Task 1 — after Task 1 it exists but defaults to `None` for both, so the SPY test specifically fails on `decisions["SPY"].limit_price == 550.0`).
+Expected: FAIL — `KeyError: 'VOO'` on the first test (not in `SYMBOL_MARKET_TYPES`); `AttributeError` or assertion failure on the other two (`limit_price` doesn't exist yet on results, since `OrderEvent` didn't have it before Task 1 — after Task 1 it exists but defaults to `None` for both, so the VOO test specifically fails on `decisions["VOO"].limit_price == 550.0`).
 
 - [ ] **Step 3: Implement**
 
@@ -226,7 +226,7 @@ In `04_paper_trading/agents/risk_agent.py`, modify the `SYMBOL_MARKET_TYPES` con
 SYMBOL_MARKET_TYPES = {
     "BTCUSDT": "crypto",
     "ETHUSDT": "crypto",
-    "SPY": "stocks",
+    "VOO": "stocks",
     "QQQ": "stocks",
 }
 ```
@@ -257,7 +257,7 @@ Expected: all tests PASS.
 
 ```bash
 git add 04_paper_trading/agents/risk_agent.py tests/test_paper_trading_risk_agent.py
-git commit -m "feat: register SPY/QQQ as stocks market type and populate OrderEvent.limit_price"
+git commit -m "feat: register VOO/QQQ as stocks market type and populate OrderEvent.limit_price"
 ```
 
 ---
@@ -485,13 +485,13 @@ def test_fetch_latest_daily_bars_returns_last_lookback_bars_rows(monkeypatch):
         stock_data_agent, "fetch_full_history_daily_bars", _fake_fetch_full_history_daily_bars
     )
 
-    ohlcv_dataframe = stock_data_agent.fetch_latest_daily_bars("SPY", lookback_bars=100)
+    ohlcv_dataframe = stock_data_agent.fetch_latest_daily_bars("VOO", lookback_bars=100)
 
     assert len(ohlcv_dataframe) == 100
     assert list(ohlcv_dataframe.columns) == ["open_time", "open", "high", "low", "close", "volume"]
     # 保留的必須是最後 100 根(最新的), 不是前 100 根
     assert ohlcv_dataframe["close"].iloc[-1] == 100.0 + 149
-    assert recorded_calls[0]["symbol"] == "SPY"
+    assert recorded_calls[0]["symbol"] == "VOO"
 
 
 def test_fetch_latest_daily_bars_raises_when_insufficient_bars(monkeypatch):
@@ -503,7 +503,7 @@ def test_fetch_latest_daily_bars_raises_when_insufficient_bars(monkeypatch):
     )
 
     with pytest.raises(ValueError, match="少於暖身所需"):
-        stock_data_agent.fetch_latest_daily_bars("SPY", lookback_bars=100)
+        stock_data_agent.fetch_latest_daily_bars("VOO", lookback_bars=100)
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
@@ -596,7 +596,7 @@ from events import FailEvent, OrderEvent, SubmittedEvent
 
 
 def test_execute_submits_limit_on_open_order_for_buy(monkeypatch):
-    order_event = OrderEvent(symbol="SPY", side="BUY", quantity=10.0, limit_price=550.25)
+    order_event = OrderEvent(symbol="VOO", side="BUY", quantity=10.0, limit_price=550.25)
     recorded_calls = []
 
     def _fake_place_limit_on_open_order(symbol, side, quantity, limit_price):
@@ -610,15 +610,15 @@ def test_execute_submits_limit_on_open_order_for_buy(monkeypatch):
     result = stock_execution_agent.execute(order_event)
 
     assert isinstance(result, SubmittedEvent)
-    assert result.symbol == "SPY"
+    assert result.symbol == "VOO"
     assert result.side == "BUY"
     assert result.order_id == "order-1"
     assert result.limit_price == 550.25
-    assert recorded_calls == [("SPY", "BUY", 10, 550.25)]
+    assert recorded_calls == [("VOO", "BUY", 10, 550.25)]
 
 
 def test_execute_submits_market_on_open_order_for_sell(monkeypatch):
-    order_event = OrderEvent(symbol="SPY", side="SELL", quantity=10.0)
+    order_event = OrderEvent(symbol="VOO", side="SELL", quantity=10.0)
     recorded_calls = []
 
     def _fake_place_market_on_open_order(symbol, side, quantity):
@@ -634,11 +634,11 @@ def test_execute_submits_market_on_open_order_for_sell(monkeypatch):
     assert isinstance(result, SubmittedEvent)
     assert result.order_id == "order-2"
     assert result.limit_price is None
-    assert recorded_calls == [("SPY", "SELL", 10)]
+    assert recorded_calls == [("VOO", "SELL", 10)]
 
 
 def test_execute_returns_fail_event_when_rounded_quantity_is_zero():
-    order_event = OrderEvent(symbol="SPY", side="BUY", quantity=0.5, limit_price=550.0)
+    order_event = OrderEvent(symbol="VOO", side="BUY", quantity=0.5, limit_price=550.0)
 
     result = stock_execution_agent.execute(order_event)
 
@@ -647,7 +647,7 @@ def test_execute_returns_fail_event_when_rounded_quantity_is_zero():
 
 
 def test_execute_returns_fail_event_when_exchange_rejects_order(monkeypatch):
-    order_event = OrderEvent(symbol="SPY", side="BUY", quantity=10.0, limit_price=550.25)
+    order_event = OrderEvent(symbol="VOO", side="BUY", quantity=10.0, limit_price=550.25)
     monkeypatch.setattr(
         stock_execution_agent,
         "place_limit_on_open_order",
@@ -661,7 +661,7 @@ def test_execute_returns_fail_event_when_exchange_rejects_order(monkeypatch):
 
 
 def test_execute_returns_fail_event_when_place_order_raises_network_exception(monkeypatch):
-    order_event = OrderEvent(symbol="SPY", side="BUY", quantity=10.0, limit_price=550.25)
+    order_event = OrderEvent(symbol="VOO", side="BUY", quantity=10.0, limit_price=550.25)
 
     def _raise_connection_error(symbol, side, quantity, limit_price):
         raise requests.exceptions.ConnectionError("模擬連線逾時")
@@ -845,7 +845,7 @@ def test_run_once_records_market_closed_as_no_op_without_fetching_data(tmp_path,
         lambda symbol: fetch_calls.append(symbol) or _make_ohlcv_dataframe(),
     )
 
-    record = run_once_stocks.run_once(symbols=["SPY"])
+    record = run_once_stocks.run_once(symbols=["VOO"])
 
     assert record["market_open"] is False
     assert fetch_calls == []
@@ -871,14 +871,14 @@ def test_run_once_logs_no_action_when_risk_agent_returns_none(tmp_path, monkeypa
     )
     monkeypatch.setattr(run_once_stocks.alpaca_paper_trading_client, "get_positions", lambda: {})
     monkeypatch.setattr(
-        run_once_stocks.risk_agent, "review_portfolio", lambda *args, **kwargs: {"SPY": None}
+        run_once_stocks.risk_agent, "review_portfolio", lambda *args, **kwargs: {"VOO": None}
     )
 
-    record = run_once_stocks.run_once(symbols=["SPY"])
+    record = run_once_stocks.run_once(symbols=["VOO"])
 
     assert record["market_open"] is True
-    assert record["symbols"]["SPY"]["risk_decision"]["type"] == "NoActionNeeded"
-    assert record["symbols"]["SPY"]["execution_result"] is None
+    assert record["symbols"]["VOO"]["risk_decision"]["type"] == "NoActionNeeded"
+    assert record["symbols"]["VOO"]["execution_result"] is None
 
 
 def test_run_once_submits_order_when_risk_agent_approves(tmp_path, monkeypatch):
@@ -899,29 +899,29 @@ def test_run_once_submits_order_when_risk_agent_approves(tmp_path, monkeypatch):
         lambda: {"equity": 10_000.0, "cash": 10_000.0},
     )
     monkeypatch.setattr(run_once_stocks.alpaca_paper_trading_client, "get_positions", lambda: {})
-    approved_order = OrderEvent(symbol="SPY", side="BUY", quantity=10.0, limit_price=550.0)
+    approved_order = OrderEvent(symbol="VOO", side="BUY", quantity=10.0, limit_price=550.0)
     monkeypatch.setattr(
-        run_once_stocks.risk_agent, "review_portfolio", lambda *args, **kwargs: {"SPY": approved_order}
+        run_once_stocks.risk_agent, "review_portfolio", lambda *args, **kwargs: {"VOO": approved_order}
     )
     submitted_event = SubmittedEvent(
-        symbol="SPY", side="BUY", quantity=10.0, order_id="order-1", limit_price=550.0
+        symbol="VOO", side="BUY", quantity=10.0, order_id="order-1", limit_price=550.0
     )
     monkeypatch.setattr(
         run_once_stocks.stock_execution_agent, "execute", lambda order_event: submitted_event
     )
 
-    record = run_once_stocks.run_once(symbols=["SPY"])
+    record = run_once_stocks.run_once(symbols=["VOO"])
 
-    assert record["symbols"]["SPY"]["risk_decision"]["type"] == "OrderEvent"
-    assert record["symbols"]["SPY"]["execution_result"]["type"] == "SubmittedEvent"
-    assert record["symbols"]["SPY"]["execution_result"]["order_id"] == "order-1"
+    assert record["symbols"]["VOO"]["risk_decision"]["type"] == "OrderEvent"
+    assert record["symbols"]["VOO"]["execution_result"]["type"] == "SubmittedEvent"
+    assert record["symbols"]["VOO"]["execution_result"]["order_id"] == "order-1"
 
 
 def test_run_once_records_fetch_failure_without_aborting_other_symbols(tmp_path, monkeypatch):
     _patch_common(monkeypatch, tmp_path)
 
     def _fetch_latest_daily_bars(symbol):
-        if symbol == "SPY":
+        if symbol == "VOO":
             raise ConnectionError("模擬網路逾時")
         return _make_ohlcv_dataframe()
 
@@ -943,10 +943,10 @@ def test_run_once_records_fetch_failure_without_aborting_other_symbols(tmp_path,
         run_once_stocks.risk_agent, "review_portfolio", lambda *args, **kwargs: {"QQQ": None}
     )
 
-    record = run_once_stocks.run_once(symbols=["SPY", "QQQ"])
+    record = run_once_stocks.run_once(symbols=["VOO", "QQQ"])
 
-    assert "模擬網路逾時" in record["fetch_failures"]["SPY"]
-    assert "SPY" not in record["symbols"]
+    assert "模擬網路逾時" in record["fetch_failures"]["VOO"]
+    assert "VOO" not in record["symbols"]
     assert record["symbols"]["QQQ"]["risk_decision"]["type"] == "NoActionNeeded"
 ```
 
@@ -961,7 +961,7 @@ Create `04_paper_trading/run_once_stocks.py`:
 
 ```python
 """
-Phase 3 紙上交易 (paper trading) 美股執行腳本 — 對 SPY 與 QQQ 兩個標的一次執行
+Phase 3 紙上交易 (paper trading) 美股執行腳本 — 對 VOO 與 QQQ 兩個標的一次執行
 data → signal → risk → execution. 與加密貨幣側 run_once.py 架構相同, 差異只在資料來源/執行客戶端
 換成 Alpaca, 且核准的開倉單一律走開盤限價/市價委託(limit-on-open / market-on-open), 不做立即市價單.
 開頭先檢查今天是否為美股交易日(用美東時間計算, 不依賴伺服器本地時區, 見 US_EASTERN_TIMEZONE),
@@ -988,7 +988,7 @@ import stock_execution_agent  # noqa: E402
 import telegram_alerts  # noqa: E402
 from events import OrderEvent  # noqa: E402
 
-SYMBOLS = ["SPY", "QQQ"]
+SYMBOLS = ["VOO", "QQQ"]
 BAR_INTERVAL = timedelta(days=1)
 LOG_FILE_PATH = os.path.join(_paper_trading_directory, "logs", "run_log_stocks.jsonl")
 DAILY_STATE_FILE_PATH = os.path.join(
@@ -1199,10 +1199,10 @@ def test_format_run_summary_reports_submitted_order():
     record = {
         "run_started_at": "2026-07-10T20:35:00+00:00",
         "symbols": {
-            "SPY": {
-                "risk_decision": {"type": "OrderEvent", "symbol": "SPY", "side": "BUY", "quantity": 10.0},
+            "VOO": {
+                "risk_decision": {"type": "OrderEvent", "symbol": "VOO", "side": "BUY", "quantity": 10.0},
                 "execution_result": {
-                    "type": "SubmittedEvent", "symbol": "SPY", "side": "BUY", "quantity": 10.0,
+                    "type": "SubmittedEvent", "symbol": "VOO", "side": "BUY", "quantity": 10.0,
                     "order_id": "order-1", "limit_price": 550.25,
                 },
             },
@@ -1212,7 +1212,7 @@ def test_format_run_summary_reports_submitted_order():
 
     summary = scheduler_stocks._format_run_summary(record)
 
-    assert "SPY: 買入 10.0 股委託已送出 (order_id=order-1), 待次日開盤確認成交" in summary
+    assert "VOO: 買入 10.0 股委託已送出 (order_id=order-1), 待次日開盤確認成交" in summary
     assert "QQQ: 本次無動作" in summary
 
 
@@ -1288,7 +1288,7 @@ def test_main_sends_summary_alert_and_exits_zero_when_market_open(monkeypatch):
     fake_record = {
         "run_started_at": "2026-07-10T20:35:00+00:00",
         "market_open": True,
-        "symbols": {"SPY": {"risk_decision": {"type": "NoActionNeeded"}, "execution_result": None}},
+        "symbols": {"VOO": {"risk_decision": {"type": "NoActionNeeded"}, "execution_result": None}},
     }
     monkeypatch.setattr(scheduler_stocks, "run_scheduled", lambda lock_file_path: fake_record)
     alerts = []
@@ -1544,10 +1544,10 @@ def test_format_daily_report_lists_submitted_orders():
             "stale_symbols": {},
             "circuit_breaker_triggered": False,
             "symbols": {
-                "SPY": {
+                "VOO": {
                     "risk_decision": {"type": "OrderEvent"},
                     "execution_result": {
-                        "type": "SubmittedEvent", "symbol": "SPY", "side": "BUY",
+                        "type": "SubmittedEvent", "symbol": "VOO", "side": "BUY",
                         "quantity": 10.0, "order_id": "order-1", "limit_price": 550.25,
                     },
                     "current_share_balance": 0.0,
@@ -1565,7 +1565,7 @@ def test_format_daily_report_lists_submitted_orders():
 
     report = monitor_stocks._format_daily_report(records, date(2026, 7, 10))
 
-    assert "SPY: 買入 10.0 股 @ 550.25 限價 開盤委託已送出 (order_id=order-1)" in report
+    assert "VOO: 買入 10.0 股 @ 550.25 限價 開盤委託已送出 (order_id=order-1)" in report
     assert "今日無新委託送出" not in report
 
 
@@ -1808,7 +1808,7 @@ python3 run_once_stocks.py
 Two scenarios must each be observed at least once and written up (mirroring the Slice 2 spec's "實作後記錄" section — see `docs/superpowers/specs/2026-07-06-phase3-paper-trading-slice2-risk-rules-design.md` for the exact format to follow):
 
 1. **On a weekend or US market holiday**: confirm the output shows `"market_open": false`, no Telegram alert was sent, and no entry was added to `logs/run_log_stocks.jsonl` beyond the no-op record itself.
-2. **On a real US trading day, after actual NYSE close**: confirm `get_account()` / `get_positions()` return real data, at least one of SPY/QQQ produces a `SignalEvent`, and the resulting decision (`NoActionNeeded`, `RejectionEvent`, or an order submission producing a `SubmittedEvent`) is recorded correctly in `logs/run_log_stocks.jsonl`. If an order was submitted, check back after the next US market open (via the Alpaca dashboard or `get_positions()`) to confirm whether it filled or was auto-cancelled, and note which happened.
+2. **On a real US trading day, after actual NYSE close**: confirm `get_account()` / `get_positions()` return real data, at least one of VOO/QQQ produces a `SignalEvent`, and the resulting decision (`NoActionNeeded`, `RejectionEvent`, or an order submission producing a `SubmittedEvent`) is recorded correctly in `logs/run_log_stocks.jsonl`. If an order was submitted, check back after the next US market open (via the Alpaca dashboard or `get_positions()`) to confirm whether it filled or was auto-cancelled, and note which happened.
 
 Record exactly what was and wasn't exercised — if, like the crypto Slice 2 verification, the signal happens to be flat (no order triggered), say so plainly rather than implying the order-submission path was tested. Append this write-up as a new section at the end of `docs/superpowers/specs/2026-07-10-phase3-us-stocks-paper-trading-design.md`, titled `## 實作後記錄: 執行紀錄(<date>)`.
 
@@ -1853,7 +1853,7 @@ If Step 4's crontab change was applied, mention in the commit body or a follow-u
 
 ## Self-Review Notes
 
-**Spec coverage:** SPY/QQQ symbols (Task 6 `SYMBOLS`), separate log/state files (Task 6 `LOG_FILE_PATH`/`DAILY_STATE_FILE_PATH`), Alpaca client with account/positions/calendar/LOO/MOO (Task 3), stock-specific data/execution agents (Tasks 4–5), `SYMBOL_MARKET_TYPES` + `limit_price` population (Task 2), `SubmittedEvent` (Task 1), calendar no-op gating (Task 6), next-day natural reconciliation (Task 6's `get_positions()` call + design note, no extra code needed), monitor differentiating submitted-vs-filled (Task 8), $10,000 pre-flight balance reset (Task 9 Step 1), crontab with `CRON_TZ` (Task 9 Step 4), ROADMAP update (Task 9 Step 5) — all covered.
+**Spec coverage:** VOO/QQQ symbols (Task 6 `SYMBOLS`), separate log/state files (Task 6 `LOG_FILE_PATH`/`DAILY_STATE_FILE_PATH`), Alpaca client with account/positions/calendar/LOO/MOO (Task 3), stock-specific data/execution agents (Tasks 4–5), `SYMBOL_MARKET_TYPES` + `limit_price` population (Task 2), `SubmittedEvent` (Task 1), calendar no-op gating (Task 6), next-day natural reconciliation (Task 6's `get_positions()` call + design note, no extra code needed), monitor differentiating submitted-vs-filled (Task 8), $10,000 pre-flight balance reset (Task 9 Step 1), crontab with `CRON_TZ` (Task 9 Step 4), ROADMAP update (Task 9 Step 5) — all covered.
 
 **Placeholder scan:** no TBD/TODO; every step has complete, runnable code; no "similar to Task N" references.
 
