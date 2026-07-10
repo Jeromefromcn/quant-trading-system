@@ -1,5 +1,5 @@
 """
-型別化事件 (typed events) — Slice 1 的 4 個 agent (data / signal / risk / execution) 之間傳遞的資料結構
+型別化事件 (typed events): Slice 1 的 4 個 agent (data / signal / risk / execution) 之間傳遞的資料結構
 每個 agent 的決策只依賴這些型別的欄位, 不依賴呼叫者內部細節, 方便個別單元測試
 """
 from dataclasses import dataclass

@@ -1,5 +1,5 @@
 """
-Binance Testnet 交易客戶端 — 簽名 (signed) REST 呼叫, 用於紙上交易 (paper trading) 查詢帳戶與下單
+Binance Testnet 交易客戶端: 簽名 (signed) REST 呼叫, 用於紙上交易 (paper trading) 查詢帳戶與下單
 與 02_data/fetchers/binance_fetcher.py 的公開行情端點不同, 這裡的端點需要 API Key 簽名驗證,
 使用 HMAC(Hash-based Message Authentication Code) -SHA256 手動簽名, 不引入 python-binance/ccxt,
 延續本專案偏好手刻 REST 呼叫, 依賴透明的風格(參見 factor_regression.py 手刻 OLS 迴歸的選擇)

@@ -1,7 +1,7 @@
 """
-Execution agent — 把核准的 OrderEvent 轉成真實 Binance Testnet 市價單, 並確認成交結果
-市價單通常在下單回應中就已包含最終狀態; 只有狀態不明確時才輪詢查詢, 查詢逾時記錄為「狀態不明」
-而非放棄或盲目重試 — 盲目重試在「可能已經下單」的狀態下有重複下單風險, 這正是 Phase 3 要暴露的問題類型
+Execution agent: 把核准的 OrderEvent 轉成真實 Binance Testnet 市價單, 並確認成交結果
+市價單通常在下單回應中就已包含最終狀態; 只有狀態不明確時才輪詢查詢, 查詢逾時記錄為狀態不明
+而非放棄或盲目重試: 盲目重試在可能已經下單的狀態下有重複下單風險, 這正是 Phase 3 要暴露的問題類型
 """
 import os
 import sys
@@ -115,7 +115,7 @@ def execute(order_event: OrderEvent, symbol_filters: dict) -> FillEvent | FailEv
             _, order_status_response = get_order_status(order_event.symbol, order_id)
         except requests.exceptions.RequestException:
             # 查詢狀態時網路例外: 訂單已確定送達交易所(已拿到 order_id), 只是這次查詢失敗,
-            # 保留上一輪的狀態不變, 讓迴圈繼續嘗試下一次, 逾時後併入下方「狀態不明」的結論
+            # 保留上一輪的狀態不變, 讓迴圈繼續嘗試下一次, 逾時後併入下方狀態不明的結論
             continue
 
     return FailEvent(

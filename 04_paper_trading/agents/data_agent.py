@@ -1,5 +1,5 @@
 """
-Data agent — 拉取最新 K 線, 供 signal_agent 產生即時信號用
+Data agent: 拉取最新 K 線, 供 signal_agent 產生即時信號用
 重用 02_data/fetchers/binance_fetcher.py 的請求與解析邏輯 (request_klines_batch,
 parse_klines_to_ohlcv_dataframe, drop_unclosed_last_candle) , 不重寫一份, 讓歷史抓取與即時抓取
 共用同一段已測試過的程式碼路徑

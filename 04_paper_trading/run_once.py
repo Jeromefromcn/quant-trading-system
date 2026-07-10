@@ -1,9 +1,9 @@
 """
-Paper trading Slice 2 執行腳本 — 對 BTC/USDT 與 ETH/USDT 兩個標的一次執行
-data → signal → risk → execution. 收集階段先跑完兩個標的的 data/signal(含逐標的數據異常檢查) ,
+Paper trading Slice 2 執行腳本: 對 BTC/USDT 與 ETH/USDT 兩個標的一次執行
+依序執行 data, signal, risk, execution. 收集階段先跑完兩個標的的 data/signal(含逐標的數據異常檢查) ,
 再交給 risk_agent 一次性做 portfolio 決策(最大同時持倉數與相關性限制等跨標的規則需要看到
 所有標的才能判斷) , 最後執行核准的訂單. 任一標的的數據抓取失敗只影響該標的本身, 不中止其他標的
-(與 Slice 1 單標的「整段失敗」不同, 見設計文件錯誤處理段落) . 手動觸發(非排程) , 每次執行都以
+(與 Slice 1 單標的整段失敗不同, 見設計文件錯誤處理段落) . 手動觸發(非排程) , 每次執行都以
 交易所真實帳戶狀態核對現有倉位, 重複執行安全(見設計文件冪等性討論)
 用法: python run_once.py
 """

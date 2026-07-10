@@ -1,5 +1,5 @@
 """
-Signal agent — 用 exp_002 凍結參數跑趨勢跟蹤(trend following) 策略, 決定「現在」該有的目標倉位
+Signal agent: 用 exp_002 凍結參數跑趨勢跟蹤(trend following) 策略, 決定現在該有的目標倉位
 直接從 exp_002_ema_adx/config.py import 凍結參數, 不重複宣告字典, 確保紙上交易與回測參數永遠一致
 """
 import os
@@ -33,7 +33,7 @@ _FROZEN_STRATEGY = TrendFollowingStrategy(**STRATEGY_PARAMS)
 
 def decide(ohlcv_dataframe: pd.DataFrame, symbol: str) -> SignalEvent:
     """
-    對輸入的 OHLCV(開高低收量) 數據跑凍結的 exp_002 策略, 取最後一列的目標倉位當作「現在」的決策
+    對輸入的 OHLCV(開高低收量) 數據跑凍結的 exp_002 策略, 取最後一列的目標倉位當作現在的決策
     參數 ohlcv_dataframe: 至少需涵蓋策略暖身期, 由 data_agent.fetch_latest_candles 提供
     回傳 SignalEvent, target_position 為 0(空手) 或 1(多單)
     """

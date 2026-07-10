@@ -1,6 +1,6 @@
 """
-Telegram 警報 — 對 Telegram Bot API 發送文字訊息, 用於每日熔斷與數據異常保護規則觸發時通知使用者
-與 binance_testnet_client.py 相同手法, 從 .env 讀取憑證; 發送失敗只記錄, 不往外拋例外 —
+Telegram 警報: 對 Telegram Bot API 發送文字訊息, 用於每日熔斷與數據異常保護規則觸發時通知使用者
+與 binance_testnet_client.py 相同手法, 從 .env 讀取憑證; 發送失敗只記錄, 不往外拋例外:
 警報是否送達不該推翻或中止一個已經正確做出的風控決策
 """
 import os
