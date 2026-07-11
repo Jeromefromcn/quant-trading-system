@@ -194,7 +194,12 @@ def check_data_staleness(
     return detail["time_since_close_seconds"] <= detail["threshold_seconds"]
 
 
-SYMBOL_MARKET_TYPES = {"BTCUSDT": "crypto", "ETHUSDT": "crypto"}
+SYMBOL_MARKET_TYPES = {
+    "BTCUSDT": "crypto",
+    "ETHUSDT": "crypto",
+    "VOO": "stocks",
+    "QQQ": "stocks",
+}
 
 
 def review_portfolio(
@@ -355,7 +360,10 @@ def review_portfolio(
             )
             continue
 
-        decisions[symbol] = OrderEvent(symbol=symbol, side="BUY", quantity=buy_quantity)
+        limit_price = signal_event.latest_close_price if market_type == "stocks" else None
+        decisions[symbol] = OrderEvent(
+            symbol=symbol, side="BUY", quantity=buy_quantity, limit_price=limit_price
+        )
         open_long_symbols.append(symbol)
 
     return decisions

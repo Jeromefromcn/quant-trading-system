@@ -298,6 +298,44 @@ def test_review_portfolio_approves_buy_when_alone_and_within_limits():
     assert decisions["BTCUSDT"].quantity == pytest.approx(0.05)
 
 
+def test_symbol_market_types_includes_stock_symbols():
+    assert risk_agent.SYMBOL_MARKET_TYPES["VOO"] == "stocks"
+    assert risk_agent.SYMBOL_MARKET_TYPES["QQQ"] == "stocks"
+
+
+def test_review_portfolio_sets_limit_price_on_stock_buy_order():
+    signal_events = {
+        "VOO": _make_signal_event("VOO", target_position=1, close_price=550.0, average_true_range=5.0)
+    }
+    close_price_histories = {"VOO": _make_close_price_series([540.0 + index for index in range(30)])}
+
+    decisions = risk_agent.review_portfolio(
+        signal_events, {}, {}, 10_000.0, 10_000.0, close_price_histories, ENGINE_PARAMETERS, RISK_LIMITS
+    )
+
+    assert isinstance(decisions["VOO"], OrderEvent)
+    assert decisions["VOO"].quantity == pytest.approx(10.0)  # 0.01*550/(2*5) = 0.55 佔比, 5500/550 = 10 股
+    assert decisions["VOO"].limit_price == 550.0
+
+
+def test_review_portfolio_leaves_limit_price_none_on_crypto_buy_order():
+    signal_events = {
+        "BTCUSDT": _make_signal_event(
+            "BTCUSDT", target_position=1, close_price=50_000.0, average_true_range=1_000.0
+        )
+    }
+    close_price_histories = {
+        "BTCUSDT": _make_close_price_series([50_000.0 + index * 100 for index in range(30)])
+    }
+
+    decisions = risk_agent.review_portfolio(
+        signal_events, {}, {}, 10_000.0, 10_000.0, close_price_histories, ENGINE_PARAMETERS, RISK_LIMITS
+    )
+
+    assert isinstance(decisions["BTCUSDT"], OrderEvent)
+    assert decisions["BTCUSDT"].limit_price is None
+
+
 def test_review_portfolio_rejects_second_correlated_open_in_same_batch():
     btc_close_prices = _make_close_price_series([50_000.0 + index * 100 for index in range(30)])
     eth_close_prices = btc_close_prices * 2.0  # 純比例縮放, 相關係數必為 1.0
