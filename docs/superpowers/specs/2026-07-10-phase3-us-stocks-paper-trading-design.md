@@ -148,3 +148,23 @@ CRON_TZ=America/New_York
 ## ROADMAP 對應
 
 完成後回頭勾選 `project_manage/ROADMAP.md` 中「`scheduler.py`: 美股每個交易日一次」與相關風控規則驗證項目(僅美股部分; 加密貨幣部分已完成), 並在 commit message 中依專案慣例標註.
+
+## 實作後記錄: 執行紀錄(2026-07-11)
+
+9 個實作任務(Task 1-9)全數完成並經 subagent 逐任務 review 通過, 全部 195 個測試通過(196 含 Task 9 前一輪修正). 以下為對真實 Alpaca Paper Trading 沙盒的手動驗證記錄.
+
+**帳戶餘額不匹配的發現與決策**: 驗證開始前查詢真實帳戶, 餘額為 100,066.65 USD, 並非設計文件原先假設的 10,000 USD(對齊 `exp_002` 凍結的 `initial_capital`). 進一步排查發現, 這個「真實帳戶餘額 ≠ `initial_capital`」的落差在加密貨幣側(Binance Testnet)本來就已經存在(真實 Testnet 淨值長期在 57,000+ USDT 量級, 而非 10,000), 只是尚未在真實 BUY 訊號下被驗證過. 原因: `review_portfolio` 的名目金額上限檢查(`initial_capital × max_position_fraction`)是固定值, 不隨真實帳戶淨值縮放, 而倉位大小本身(`compute_buy_quantity`)則是用真實帳戶淨值計算的, 兩者基準不一致時, 只有 BUY 方向會受影響(SELL/出場方向沒有這條檢查). 由於這個落差是兩條 pipeline 共有的既存狀態, 不是本次新增功能特有的問題, 決定**不**重設帳戶餘額, 直接用真實現況(100,066.65 USD)進行驗證, 讓這次驗證同時檢驗風控上限規則在真實不匹配情境下的行為.
+
+**驗證 1: 真實交易日執行**(美東時間 2026-07-10, 星期五): 執行 `python3 run_once_stocks.py` 兩次(緊接著驗證冪等性):
+- 兩次執行皆成功取得真實 Alpaca 帳戶狀態(`account_equity_usd` = 100066.65)與真實 VOO/QQQ 收盤數據(VOO 收盤 693.9, QQQ 收盤 725.595)
+- 兩個標的的策略訊號皆為 `target_position=0`(空手), 與帳戶當前真實持倉(0 股)相符, 故 `risk_decision` 皆為 `NoActionNeeded`, 未產生任何委託單
+- 冪等性確認成立: 第二次執行結果與第一次完全一致, `daily_risk_state_stocks.json` 的 `equity_at_day_start_usd` 未被覆寫(維持第一次執行時的值), `run_log_stocks.jsonl` 正確新增第二行紀錄(未重複下單)
+- **誠實記錄**: 由於今天訊號恰好兩個標的都是空手, 這次驗證**沒有**真正觸發 BUY 路徑, 因此上一段提到的「真實帳戶餘額與 `initial_capital` 不匹配可能導致 BUY 被名目金額上限擋下」這個情境, 這次沒有機會被實際驗證, 留待之後真的遇到 BUY 訊號時的自然驗證
+
+**驗證 2: 非交易日判斷**(不等待真實週末, 直接對真實 Alpaca 交易日曆 API 查詢已知的非交易日): 呼叫 `alpaca_paper_trading_client.get_todays_calendar_entry(...)` 分別查詢 `2026-07-04`(美國獨立日, 市場假日)、`2026-07-11`(星期六)、`2026-07-10`(星期五, 真實交易日對照組). 前兩者皆正確回傳 `None`, 後者正確回傳含 `open`/`close` 時間的真實交易日曆條目. 這證明 `run_once_stocks.py` 開頭的交易日曆檢查(已由 Task 6 review 逐行追蹤確認會在 `calendar_entry is None` 時提前結束) 在真實 API 回應下能正確判斷非交易日, 不需要真的等到週末才能驗證這條路徑.
+
+**驗證 3: `monitor_stocks.py`**: 執行 `python3 monitor_stocks.py`, 成功讀取 `run_log_stocks.jsonl` 並透過 Telegram 送出報告(無錯誤訊息代表送達成功, 與 `telegram_alerts.py` 的靜默成功設計一致). 因為執行時間是同一個美東交易日的傍晚, 報告涵蓋的「前一美東交易日」(2026-07-09) 當時尚無任何執行紀錄, 報告正確顯示 0 筆執行紀錄, 而非誤判或崩潰.
+
+**驗證 4: `scheduler_stocks.py`**: 執行 `python3 scheduler_stocks.py`, 成功以 exit code 0 完成, 鎖檔正確建立與釋放, `run_log_stocks.jsonl` 正確新增第三行紀錄.
+
+**這次驗證證明的事**: pipeline 串接無誤(交易日曆檢查 → 真實帳戶/倉位查詢 → 真實數據抓取 → 訊號計算 → 風控決策 → 記錄), 真實 Alpaca API 三個端點(帳戶, 倉位, 交易日曆)皆可正常呼叫, `NoActionNeeded` 情境下的冪等性成立, `monitor_stocks.py` 與 `scheduler_stocks.py` 皆可正常運作. **尚未證明的事**: BUY 開倉委託(limit-on-open)與 SELL 出場委託(market-on-open)的真實送單路徑, 相關性限制擋下 VOO/QQQ 同時開倉的情境, 每日熔斷觸發路徑, 數據異常保護觸發路徑 — 這些留待之後真的遇到對應訊號或市場條件時的自然驗證, 與加密貨幣側 Slice 2 當時的驗證後記錄狀態相同性質(而非逐筆核對真實數據).

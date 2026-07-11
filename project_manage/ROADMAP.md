@@ -197,7 +197,7 @@
 ### 調度與通知
 
 - [x] `scheduler.py`: 加密貨幣每 4 小時一次(00:00 / 04:00 / 08:00 / 12:00 / 16:00 / 20:00 UTC)
-- [ ] `scheduler.py`: 美股每個交易日一次(美東 16:30 收盤後計算信號, 次日開盤前 30 分鐘掛限價單)
+- [x] `scheduler_stocks.py`: 美股每個交易日一次(美東收盤後計算信號並直接送開盤限價/市價委託, 由交易所在次日開盤拍賣時撮合, 不自建開盤前掛單流程, 見 `docs/superpowers/specs/2026-07-10-phase3-us-stocks-paper-trading-design.md`)
 - [x] `monitor.py`: 每日自動生成報告並發送 Telegram(含信號, 執行結果, 持倉, 帳戶摘要, 系統健康)
 - [x] 配置 Telegram Bot Token 和 Chat ID(`.env` 中, 不入 Git; 已於 Slice 2 接上真實警報, `scheduler.py` / `monitor.py` 每日報告仍留待後續切片)
 
