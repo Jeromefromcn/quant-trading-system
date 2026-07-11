@@ -77,6 +77,15 @@ def round_quantity_down_to_whole_shares(quantity: float) -> int:
     return int(quantity)
 
 
+def round_price_to_cent(price: float) -> float:
+    """
+    把限價單價格四捨五入到分(cent, 即小數點後兩位), 純函數, 可獨立單元測試
+    Alpaca 規定 1 美元以上的股票限價單必須是 0.01 的整數倍, 來源價格(收盤價)
+    常有 3 位以上小數, 不裁剪會被交易所以 HTTP 422 拒單
+    """
+    return round(price, 2)
+
+
 def _submit_order(order_payload: dict) -> tuple[int, dict]:
     """對 /v2/orders 送出委託, 回傳 (HTTP 狀態碼, 交易所回應 JSON) , 不拋例外, 由呼叫端判斷成敗"""
     response = requests.post(
@@ -99,7 +108,7 @@ def place_limit_on_open_order(
             "type": "limit",
             "time_in_force": "opg",
             "qty": str(quantity),
-            "limit_price": str(limit_price),
+            "limit_price": str(round_price_to_cent(limit_price)),
         }
     )
 
