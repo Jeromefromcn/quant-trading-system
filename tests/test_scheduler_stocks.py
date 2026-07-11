@@ -148,3 +148,44 @@ def test_main_sends_alert_and_exits_one_when_run_once_raises(monkeypatch):
     assert exit_info.value.code == 1
     assert len(alerts) == 1
     assert "模擬 API 無回應" in alerts[0]
+
+
+def test_main_does_not_send_summary_when_notify_disabled(monkeypatch):
+    fake_record = {
+        "run_started_at": "2026-07-08T09:05:53+00:00",
+        "market_open": True,
+        "symbols": {
+            "VOO": {"risk_decision": {"type": "NoActionNeeded"}, "execution_result": None},
+        },
+    }
+    monkeypatch.setattr(scheduler_stocks, "run_scheduled", lambda lock_file_path: fake_record)
+    monkeypatch.setattr(scheduler_stocks, "NOTIFY_RUN_SUMMARY", False)
+    alerts = []
+    monkeypatch.setattr(scheduler_stocks.telegram_alerts, "send_alert", lambda message: alerts.append(message))
+
+    with pytest.raises(SystemExit) as exit_info:
+        scheduler_stocks.main()
+
+    assert exit_info.value.code == 0
+    assert alerts == []
+
+
+def test_format_run_summary_reports_execution_failure_reason():
+    record = {
+        "run_started_at": "2026-07-10T20:35:00+00:00",
+        "symbols": {
+            "VOO": {
+                "risk_decision": {
+                    "type": "OrderEvent", "symbol": "VOO", "side": "SELL", "quantity": 10.0,
+                },
+                "execution_result": {
+                    "type": "FailEvent", "symbol": "VOO",
+                    "reason": "insufficient_buying_power",
+                },
+            },
+        },
+    }
+
+    summary = scheduler_stocks._format_run_summary(record)
+
+    assert "VOO: 下單失敗 (insufficient_buying_power)" in summary
