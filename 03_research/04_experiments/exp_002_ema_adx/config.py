@@ -18,9 +18,14 @@ STRATEGY_PARAMS = {
     "adx_threshold": 25.0,
 }
 
-# 引擎參數: 帳戶 $10,000, 每筆風險 1%, 止損 ×ATR, Binance Taker 0.1% + 滑點 0.05%, 加密貨幣年化用 365
+# 引擎參數: 帳戶 $100,000, 每筆風險 1%, 止損 ×ATR, Binance Taker 0.1% + 滑點 0.05%, 加密貨幣年化用 365
+# initial_capital 於 2026-07-11 由 $10,000 調整為 $100,000, 對齊 Alpaca Paper Trading 與 Binance
+# Testnet 兩邊真實帳戶規模, 讓 04_paper_trading 的名目金額上限與真實淨值同量級, 不再系統性擋下
+# 正常大小的開倉. 這個調整只影響 04_paper_trading 的風控上限計算, 不影響本實驗已記錄的 Sharpe /
+# CAGR / 最大回撤等績效指標(皆為百分比報酬, 與起始資金絕對值無關), 見 results.json 與 notes.md
+# 保留的原始 $10,000 版本記錄
 ENGINE_PARAMS = {
-    "initial_capital": 10_000.0,
+    "initial_capital": 100_000.0,
     "risk_per_trade_percentage": 0.01,
     "atr_stop_multiplier": 2.0,
     "atr_period": 14,
