@@ -1,6 +1,9 @@
 """
 Phase 3 紙上交易 (paper trading) 美股每日報告 (monitor): 讀取 run_log_stocks.jsonl 中前一個美東交易日
-的執行紀錄, 彙總成每日報告透過 Telegram 發送. 由獨立 crontab 於次日美股開盤前觸發.
+的執行紀錄, 彙總成每日報告透過 Telegram 發送. crontab 每 15 分鐘觸發一次, 由 main() 內部用美東時間判斷
+是否落在開盤前目標窗口, 且「昨天」是否真的有交易紀錄(market_open=True), 兩者皆成立才發送, 不依賴 cron
+本身的時區/星期欄位解讀, 也不需要額外狀態檔做去重(見 docs/superpowers/specs/2026-07-13-phase3-stocks-
+scheduler-timezone-fix-design.md 的「去重設計」段落).
 與加密貨幣版 monitor.py 的關鍵差異: 這裡顯示的是已送出的開盤委託(SubmittedEvent, 尚未確認成交),
 不是已確認成交; 是否成交由今日實際持倉(來自查詢到的真實 Alpaca 倉位) 間接反映.
 見設計文件 docs/superpowers/specs/2026-07-10-phase3-us-stocks-paper-trading-design.md
@@ -9,7 +12,7 @@ Phase 3 紙上交易 (paper trading) 美股每日報告 (monitor): 讀取 run_lo
 import json
 import os
 import sys
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 _paper_trading_directory = os.path.dirname(os.path.abspath(__file__))
@@ -20,6 +23,13 @@ import telegram_alerts  # noqa: E402
 LOG_FILE_PATH = os.path.join(_paper_trading_directory, "logs", "run_log_stocks.jsonl")
 US_EASTERN_TIMEZONE = ZoneInfo("America/New_York")
 EXPECTED_RUNS_PER_DAY = 1  # 美股排程每個交易日只觸發一次(收盤後), 與加密貨幣的每 4 小時一次不同
+TARGET_WINDOW_START_EASTERN = time(7, 45)
+TARGET_WINDOW_END_EASTERN = time(8, 0)
+
+
+def _is_within_target_window(now_eastern: datetime) -> bool:
+    """判斷現在美東時間是否落在開盤前目標執行窗口 [07:45, 08:00) 內"""
+    return TARGET_WINDOW_START_EASTERN <= now_eastern.time() < TARGET_WINDOW_END_EASTERN
 
 
 def _load_records_for_date(log_file_path: str, target_date: date) -> list[dict]:
@@ -118,9 +128,14 @@ def _format_daily_report(records: list[dict], target_date: date) -> str:
     )
 
 
-def main() -> None:
-    target_date = (datetime.now(US_EASTERN_TIMEZONE) - timedelta(days=1)).date()
+def main(now_eastern: datetime | None = None) -> None:
+    now_eastern = now_eastern if now_eastern is not None else datetime.now(US_EASTERN_TIMEZONE)
+    if not _is_within_target_window(now_eastern):
+        return
+    target_date = (now_eastern - timedelta(days=1)).date()
     records = _load_records_for_date(LOG_FILE_PATH, target_date)
+    if not any(record.get("market_open") for record in records):
+        return
     report = _format_daily_report(records, target_date)
     telegram_alerts.send_alert(report)
     print(f"美股每日報告已發送 ({target_date.isoformat()}), 涵蓋 {len(records)} 筆執行紀錄")

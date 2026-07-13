@@ -1,6 +1,6 @@
 """monitor_stocks.py 的每日報告測試 : 讀檔/日期過濾用 tmp_path, 格式化與發送用手造資料或 mock"""
 import json
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, time, timedelta
 
 import pytest
 
@@ -116,7 +116,7 @@ def test_main_loads_formats_and_sends_report_for_previous_eastern_trading_day(mo
     def _fake_load_records_for_date(log_file_path, target_date):
         captured["log_file_path"] = log_file_path
         captured["target_date"] = target_date
-        return [{"marker": "fake_record"}]
+        return [{"marker": "fake_record", "market_open": True}]
 
     def _fake_format_daily_report(records, target_date):
         captured["records"] = records
@@ -130,12 +130,75 @@ def test_main_loads_formats_and_sends_report_for_previous_eastern_trading_day(mo
         monitor_stocks.telegram_alerts, "send_alert", lambda message: sent_messages.append(message)
     )
 
-    monitor_stocks.main()
+    now_eastern = datetime(2026, 7, 11, 7, 50, 0)
+    monitor_stocks.main(now_eastern=now_eastern)
 
-    expected_target_date = (
-        datetime.now(monitor_stocks.US_EASTERN_TIMEZONE) - timedelta(days=1)
-    ).date()
+    expected_target_date = (now_eastern - timedelta(days=1)).date()
     assert captured["target_date"] == expected_target_date
     assert captured["format_target_date"] == expected_target_date
-    assert captured["records"] == [{"marker": "fake_record"}]
+    assert captured["records"] == [{"marker": "fake_record", "market_open": True}]
     assert sent_messages == ["格式化後的報告文字"]
+
+
+def test_main_skips_when_outside_target_window(monkeypatch):
+    was_called = {"called": False}
+    monkeypatch.setattr(
+        monitor_stocks, "_load_records_for_date",
+        lambda log_file_path, target_date: was_called.update(called=True),
+    )
+    sent_messages = []
+    monkeypatch.setattr(
+        monitor_stocks.telegram_alerts, "send_alert", lambda message: sent_messages.append(message)
+    )
+
+    now_eastern = datetime(2026, 7, 11, 12, 0, 0)
+    monitor_stocks.main(now_eastern=now_eastern)
+
+    assert was_called["called"] is False
+    assert sent_messages == []
+
+
+def test_main_skips_when_previous_day_was_not_a_trading_day(monkeypatch):
+    monkeypatch.setattr(
+        monitor_stocks, "_load_records_for_date",
+        lambda log_file_path, target_date: [{"market_date_eastern": str(target_date), "market_open": False}],
+    )
+    sent_messages = []
+    monkeypatch.setattr(
+        monitor_stocks.telegram_alerts, "send_alert", lambda message: sent_messages.append(message)
+    )
+
+    now_eastern = datetime(2026, 7, 13, 7, 50, 0)
+    monitor_stocks.main(now_eastern=now_eastern)
+
+    assert sent_messages == []
+
+
+def test_is_within_target_window_before_start_returns_false():
+    now_eastern = datetime(2026, 7, 13, 7, 44, 59)
+
+    assert monitor_stocks._is_within_target_window(now_eastern) is False
+
+
+def test_is_within_target_window_at_start_returns_true():
+    now_eastern = datetime(2026, 7, 13, 7, 45, 0)
+
+    assert monitor_stocks._is_within_target_window(now_eastern) is True
+
+
+def test_is_within_target_window_inside_returns_true():
+    now_eastern = datetime(2026, 7, 13, 7, 50, 0)
+
+    assert monitor_stocks._is_within_target_window(now_eastern) is True
+
+
+def test_is_within_target_window_at_end_returns_false():
+    now_eastern = datetime(2026, 7, 13, 8, 0, 0)
+
+    assert monitor_stocks._is_within_target_window(now_eastern) is False
+
+
+def test_is_within_target_window_after_end_returns_false():
+    now_eastern = datetime(2026, 7, 13, 9, 0, 0)
+
+    assert monitor_stocks._is_within_target_window(now_eastern) is False
