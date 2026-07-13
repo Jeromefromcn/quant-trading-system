@@ -1,9 +1,9 @@
 """
 Phase 3 紙上交易 (paper trading) 美股每日報告 (monitor): 讀取 run_log_stocks.jsonl 中前一個美東交易日
 的執行紀錄, 彙總成每日報告透過 Telegram 發送. crontab 每 15 分鐘觸發一次, 由 main() 內部用美東時間判斷
-是否落在開盤前目標窗口, 且「昨天」是否真的有交易紀錄(market_open=True), 兩者皆成立才發送, 不依賴 cron
+是否落在開盤前目標窗口, 且昨天是否真的有交易紀錄(market_open=True), 兩者皆成立才發送, 不依賴 cron
 本身的時區/星期欄位解讀, 也不需要額外狀態檔做去重(見 docs/superpowers/specs/2026-07-13-phase3-stocks-
-scheduler-timezone-fix-design.md 的「去重設計」段落).
+scheduler-timezone-fix-design.md 的去重設計段落).
 與加密貨幣版 monitor.py 的關鍵差異: 這裡顯示的是已送出的開盤委託(SubmittedEvent, 尚未確認成交),
 不是已確認成交; 是否成交由今日實際持倉(來自查詢到的真實 Alpaca 倉位) 間接反映.
 見設計文件 docs/superpowers/specs/2026-07-10-phase3-us-stocks-paper-trading-design.md
