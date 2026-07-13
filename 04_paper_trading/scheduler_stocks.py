@@ -1,14 +1,17 @@
 """
 Phase 3 紙上交易 (paper trading) 美股排程器 (scheduler): 包住 run_once_stocks.run_once() 的排程
-安全網, 提供防重疊執行的鎖(lock) 與失敗告警, 讓 crontab 可以無人值守地在每個美股交易日收盤後觸發一次.
+安全網, 提供防重疊執行的鎖(lock) 與失敗告警. crontab 每 15 分鐘觸發一次, 由 _should_run_now 內部
+用美東時間判斷是否落在收盤後目標窗口且今天尚未執行, 不依賴 cron 本身的時區/星期欄位解讀(該解讀在
+本機不可靠, 見 docs/superpowers/specs/2026-07-13-phase3-stocks-scheduler-timezone-fix-design.md).
 非交易日(run_once_stocks 回報 market_open=False) 不發送 Telegram 摘要, 避免週末/假日連續洗版
-見設計文件 docs/superpowers/specs/2026-07-10-phase3-us-stocks-paper-trading-design.md
 用法: python3 scheduler_stocks.py
 """
 import fcntl
+import json
 import os
 import sys
 import traceback
+from datetime import datetime, time
 
 _paper_trading_directory = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _paper_trading_directory)
@@ -18,6 +21,39 @@ import telegram_alerts  # noqa: E402
 
 SCHEDULER_LOCK_PATH = os.path.join(_paper_trading_directory, "logs", "scheduler_stocks.lock")
 NOTIFY_RUN_SUMMARY = True  # 交易日執行完成後是否發送 Telegram 執行摘要, 設為 False 可關閉此通知
+
+TARGET_WINDOW_START_EASTERN = time(16, 35)
+TARGET_WINDOW_END_EASTERN = time(17, 35)
+
+
+def _is_within_target_window(now_eastern: datetime) -> bool:
+    """判斷現在美東時間是否落在收盤後目標執行窗口 [16:35, 17:35) 內"""
+    return TARGET_WINDOW_START_EASTERN <= now_eastern.time() < TARGET_WINDOW_END_EASTERN
+
+
+def _has_already_run_today(log_file_path: str, today_eastern: str) -> bool:
+    """讀 run_log_stocks.jsonl 最後一行, 判斷今天(美東日期) 是否已經執行過一次"""
+    if not os.path.exists(log_file_path):
+        return False
+    with open(log_file_path, "r", encoding="utf-8") as log_file:
+        non_blank_lines = [line for line in log_file if line.strip()]
+    if not non_blank_lines:
+        return False
+    try:
+        last_record = json.loads(non_blank_lines[-1])
+    except json.JSONDecodeError:
+        return False
+    if not isinstance(last_record, dict):
+        return False
+    return last_record.get("market_date_eastern") == today_eastern
+
+
+def _should_run_now(now_eastern: datetime, log_file_path: str) -> bool:
+    """兩個條件皆成立才需要真的執行: 現在落在目標窗口內, 且今天(美東日期) 還沒執行過"""
+    if not _is_within_target_window(now_eastern):
+        return False
+    today_eastern = now_eastern.date().isoformat()
+    return not _has_already_run_today(log_file_path, today_eastern)
 
 
 class SchedulerLockedError(Exception):
@@ -71,7 +107,10 @@ def run_scheduled(lock_file_path: str) -> dict:
     return run_once_stocks.run_once()
 
 
-def main() -> None:
+def main(now_eastern: datetime | None = None) -> None:
+    now_eastern = now_eastern if now_eastern is not None else datetime.now(run_once_stocks.US_EASTERN_TIMEZONE)
+    if not _should_run_now(now_eastern, run_once_stocks.LOG_FILE_PATH):
+        sys.exit(0)
     try:
         record = run_scheduled(SCHEDULER_LOCK_PATH)
     except SchedulerLockedError as locked_error:
